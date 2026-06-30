@@ -76,7 +76,7 @@ public sealed class StressorAppRunner
         };
         var payloadOption = new Option<string>("--payload", "-p")
         {
-            Description = "Path to the JSON payload file",
+            Description = "Path to a JSON payload file (single body or multi-payload envelope)",
             Required = true
         };
         var methodOption = new Option<string>("--method", "-m")

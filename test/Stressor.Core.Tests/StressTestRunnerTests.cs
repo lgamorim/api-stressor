@@ -95,7 +95,8 @@ public class StressTestRunnerTests
     [Fact]
     public async Task RunAsync_CancelledMidCycle_StopsAfterInFlightRequest()
     {
-        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns("{}");
+        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new[] { "{}" });
 
         httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
@@ -162,10 +163,137 @@ public class StressTestRunnerTests
         Assert.Equal(1, report.SucceededCount);
     }
 
+    [Fact]
+    public async Task RunAsync_SinglePayloadList_SendsSamePayloadEveryRequest()
+    {
+        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new[] { "same" });
+        ConfigureSuccessfulRequestForAnyPayload();
+
+        var runner = CreateRunner();
+        await runner.RunAsync(CreateOptions(requests: 3, cycles: 2));
+
+        await httpClient.Received(6).SendAsync(
+            Arg.Any<StressTestOptions>(),
+            "same",
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RunAsync_MultiplePayloads_RotatesAndWrapsWithinCycle()
+    {
+        ConfigureMultiplePayloads(["a", "b", "c"]);
+        var runner = CreateRunner();
+
+        await runner.RunAsync(CreateOptions(requests: 5, cycles: 1));
+
+        await AssertPayloadSequenceAsync(["a", "b", "c", "a", "b"]);
+    }
+
+    [Fact]
+    public async Task RunAsync_MultiplePayloads_ExactCountNoWrap()
+    {
+        ConfigureMultiplePayloads(["a", "b", "c"]);
+        var runner = CreateRunner();
+
+        await runner.RunAsync(CreateOptions(requests: 3, cycles: 1));
+
+        await AssertPayloadSequenceAsync(["a", "b", "c"]);
+    }
+
+    [Fact]
+    public async Task RunAsync_MultiplePayloads_PartialCountNoWrap()
+    {
+        ConfigureMultiplePayloads(["a", "b", "c"]);
+        var runner = CreateRunner();
+
+        await runner.RunAsync(CreateOptions(requests: 2, cycles: 1));
+
+        await AssertPayloadSequenceAsync(["a", "b"]);
+    }
+
+    [Fact]
+    public async Task RunAsync_MultiplePayloads_OneRequestUsesFirstOnly()
+    {
+        ConfigureMultiplePayloads(["a", "b", "c"]);
+        var runner = CreateRunner();
+
+        await runner.RunAsync(CreateOptions(requests: 1, cycles: 1));
+
+        await AssertPayloadSequenceAsync(["a"]);
+    }
+
+    [Fact]
+    public async Task RunAsync_MultiplePayloads_ResetsAtStartOfNextCycle()
+    {
+        ConfigureMultiplePayloads(["a", "b", "c"]);
+        var runner = CreateRunner();
+
+        await runner.RunAsync(CreateOptions(requests: 4, cycles: 2));
+
+        await AssertPayloadSequenceAsync(["a", "b", "c", "a", "a", "b", "c", "a"]);
+    }
+
+    [Fact]
+    public async Task RunAsync_MultiplePayloads_FailureContinuesRotation()
+    {
+        ConfigureMultiplePayloads(["a", "b", "c"]);
+        httpClient.SendAsync(
+                Arg.Any<StressTestOptions>(),
+                Arg.Any<string>(),
+                Arg.Any<int>(),
+                Arg.Is<int>(n => n == 2),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new RequestOutcome(1, 2, false, false, 500, TimeSpan.Zero, "fail")));
+
+        var runner = CreateRunner();
+        var report = await runner.RunAsync(CreateOptions(requests: 3, cycles: 1));
+
+        Assert.Equal(3, report.TotalRequests);
+        await AssertPayloadSequenceAsync(["a", "b", "c"]);
+    }
+
+    [Fact]
+    public async Task RunAsync_MultiplePayloads_CancelledMidCycle_StopsRotation()
+    {
+        ConfigureMultiplePayloads(["a", "b", "c"]);
+
+        httpClient.SendAsync(
+                Arg.Any<StressTestOptions>(),
+                Arg.Any<string>(),
+                Arg.Any<int>(),
+                Arg.Is<int>(n => n == 1),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new RequestOutcome(1, 1, true, false, 200, TimeSpan.Zero, null)));
+
+        httpClient.SendAsync(
+                Arg.Any<StressTestOptions>(),
+                Arg.Any<string>(),
+                Arg.Any<int>(),
+                Arg.Is<int>(n => n == 2),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new RequestOutcome(1, 2, false, true, null, TimeSpan.Zero, "cancelled")));
+
+        var runner = CreateRunner();
+        var report = await runner.RunAsync(CreateOptions(requests: 3, cycles: 1));
+
+        Assert.Equal(2, report.TotalRequests);
+        Assert.True(report.WasCancelled);
+        await AssertPayloadSequenceAsync(["a", "b"]);
+    }
+
     private void ConfigureSuccessfulRequest()
     {
-        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns("{}");
+        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new[] { "{}" });
 
+        ConfigureSuccessfulRequestForAnyPayload();
+    }
+
+    private void ConfigureSuccessfulRequestForAnyPayload()
+    {
         httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
@@ -175,8 +303,33 @@ public class StressTestRunnerTests
             .Returns(call =>
             {
                 var requestNumber = call.ArgAt<int>(3);
-                return Task.FromResult(new RequestOutcome(1, requestNumber, true, false, 200, TimeSpan.Zero, null));
+                var cycleNumber = call.ArgAt<int>(2);
+                return Task.FromResult(new RequestOutcome(cycleNumber, requestNumber, true, false, 200, TimeSpan.Zero, null));
             });
+    }
+
+    private void ConfigureMultiplePayloads(string[] payloads)
+    {
+        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(payloads);
+
+        ConfigureSuccessfulRequestForAnyPayload();
+    }
+
+    private async Task AssertPayloadSequenceAsync(string[] expectedPayloads)
+    {
+        var receivedCalls = httpClient.ReceivedCalls()
+            .Where(call => call.GetMethodInfo().Name == nameof(IHttpStressTestClient.SendAsync))
+            .Select(call => call.GetArguments()[1] as string)
+            .ToList();
+
+        Assert.Equal(expectedPayloads.Length, receivedCalls.Count);
+        for (var i = 0; i < expectedPayloads.Length; i++)
+        {
+            Assert.Equal(expectedPayloads[i], receivedCalls[i]);
+        }
+
+        await Task.CompletedTask;
     }
 
     private StressTestRunner CreateRunner() =>

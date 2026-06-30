@@ -25,8 +25,13 @@ public static class StressorAppHelp
         output.WriteLine("  Stressor.App --url https://api.example.com/orders --payload ./payload.json \\");
         output.WriteLine("    --requests 10 --interval 1s --cycles 60");
         output.WriteLine();
-        output.WriteLine("  Stressor.App -u https://api.example.com/orders -p ./payload.json -m POST \\");
+        output.WriteLine("  Stressor.App -u https://api.example.com/orders -p ./payloads.json -m POST \\");
         output.WriteLine("    -r 10 -i 1s -c 60 -a \"Bearer your-token-here\"");
+        output.WriteLine();
+        output.WriteLine("Payload file:");
+        output.WriteLine("  Single body: any JSON value sent unchanged on every request.");
+        output.WriteLine("  Multi-payload: root object with only a \"payloads\" array; items rotate");
+        output.WriteLine("    per request within each cycle, wrapping when requests exceed payload count.");
         output.WriteLine();
         output.WriteLine("Load:");
         output.WriteLine("  Each cycle sends --requests calls spread evenly across --interval.");

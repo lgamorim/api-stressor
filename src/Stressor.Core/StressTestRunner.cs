@@ -27,7 +27,7 @@ public sealed class StressTestRunner : IStressTestRunner
             throw new ArgumentException(string.Join(" ", validationErrors));
         }
 
-        var payload = await payloadReader.ReadAsync(options.PayloadFilePath, cancellationToken).ConfigureAwait(false);
+        var payloads = await payloadReader.ReadAsync(options.PayloadFilePath, cancellationToken).ConfigureAwait(false);
         var outcomes = new List<RequestOutcome>();
         var wasCancelled = false;
 
@@ -47,6 +47,8 @@ public sealed class StressTestRunner : IStressTestRunner
                     wasCancelled = true;
                     break;
                 }
+
+                var payload = payloads[(request - 1) % payloads.Count];
 
                 var outcome = await httpClient.SendAsync(
                     options,

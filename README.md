@@ -47,7 +47,7 @@ When running the built executable:
 | Option | Short | Required | Description |
 |--------|-------|----------|-------------|
 | `--url` | `-u` | Yes | Full URL of the API endpoint (must start with `http://` or `https://`) |
-| `--payload` | `-p` | Yes | Path to a file containing valid JSON to send with each request |
+| `--payload` | `-p` | Yes | Path to a JSON payload file (single body or multi-payload envelope) |
 | `--requests` | `-r` | Yes | Number of requests to send during each interval |
 | `--interval` | `-i` | Yes | Length of each interval (see formats below) |
 | `--cycles` | `-c` | Yes | How many intervals to run |
@@ -93,7 +93,11 @@ So `--requests 10 --interval 1s --cycles 60` sends 600 requests over roughly 60 
 
 ## Payload file
 
-Create a JSON file with the body you want to send. Example `payload.json`:
+The payload file must contain valid JSON. There are two formats:
+
+### Single body (default)
+
+Any JSON value — object, array, or primitive — is sent unchanged on every request. Example `payload.json`:
 
 ```json
 {
@@ -102,13 +106,37 @@ Create a JSON file with the body you want to send. Example `payload.json`:
 }
 ```
 
-Pass its path with `--payload`:
+Root-level arrays are also sent as a single body:
+
+```json
+[1, 2, 3]
+```
+
+### Multi-payload envelope
+
+To rotate through multiple request bodies within each cycle, use a root object with **only** a `payloads` array. Example `payloads.json`:
+
+```json
+{
+  "payloads": [
+    {"orderId": 1, "quantity": 1},
+    {"orderId": 2, "quantity": 3},
+    {"orderId": 3, "quantity": 5}
+  ]
+}
+```
+
+Each array element is sent as the request body for one request, in order. If there are more requests in a cycle than payloads, the tool wraps back to the first item. Each new cycle starts again from the first payload.
+
+Objects that include a `payloads` field alongside other fields (for example `{"orderId": 1, "payloads": [1, 2]}`) are **not** treated as an envelope — the full file is sent as a single body.
+
+Pass the file path with `--payload`:
 
 ```powershell
 --payload ./payload.json
 ```
 
-The file must contain valid JSON. Its contents are sent unchanged for body-bearing methods.
+For body-bearing methods (`POST`, `PUT`, `PATCH`), the selected payload is sent as the request body. For other methods, the payload file is still required and validated, but no body is attached.
 
 ## Example
 

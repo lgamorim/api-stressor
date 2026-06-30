@@ -2,5 +2,5 @@ namespace Stressor.Core;
 
 public interface IJsonPayloadReader
 {
-    Task<string> ReadAsync(string filePath, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<string>> ReadAsync(string filePath, CancellationToken cancellationToken = default);
 }
