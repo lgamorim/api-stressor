@@ -86,12 +86,12 @@ public sealed class StressorAppRunner
         };
         var requestsOption = new Option<int>("--requests", "-r")
         {
-            Description = "Requests to send per interval",
+            Description = "Requests to send per cycle",
             Required = true
         };
         var intervalOption = new Option<string>("--interval", "-i")
         {
-            Description = "Time window per cycle (e.g. 1s, 500ms, 00:00:01)",
+            Description = "Minimum delay between consecutive request starts (e.g. 1s, 500ms, 00:00:01)",
             Required = true
         };
         var cyclesOption = new Option<int>("--cycles", "-c")
@@ -103,6 +103,14 @@ public sealed class StressorAppRunner
         {
             Description = "Authorization header value (e.g. Bearer <token>)"
         };
+        var verboseOption = new Option<bool>("--verbose", "-v")
+        {
+            Description = "Print per-request position, payload, and failure details"
+        };
+        var prettyPrintOption = new Option<bool>("--prettyprint", "-pp")
+        {
+            Description = "Print per-request output with indented JSON payloads"
+        };
 
         rootCommand.Options.Add(urlOption);
         rootCommand.Options.Add(payloadOption);
@@ -111,6 +119,8 @@ public sealed class StressorAppRunner
         rootCommand.Options.Add(intervalOption);
         rootCommand.Options.Add(cyclesOption);
         rootCommand.Options.Add(authOption);
+        rootCommand.Options.Add(verboseOption);
+        rootCommand.Options.Add(prettyPrintOption);
 
         rootCommand.SetAction(async (parseResult, token) =>
         {
@@ -122,6 +132,8 @@ public sealed class StressorAppRunner
                 parseResult.GetValue(intervalOption)!,
                 parseResult.GetValue(cyclesOption),
                 parseResult.GetValue(authOption),
+                parseResult.GetValue(verboseOption),
+                parseResult.GetValue(prettyPrintOption),
                 token).ConfigureAwait(false);
         });
 
@@ -138,6 +150,8 @@ public sealed class StressorAppRunner
         string interval,
         int cycles,
         string? auth,
+        bool verbose,
+        bool prettyPrint,
         CancellationToken cancellationToken,
         IServiceProvider? serviceProviderOverride = null)
     {
@@ -160,7 +174,9 @@ public sealed class StressorAppRunner
             requests,
             intervalSpan,
             cycles,
-            auth);
+            auth,
+            verbose,
+            prettyPrint);
 
         var validationErrors = StressTestOptionsValidator.Validate(options);
         if (validationErrors.Count > 0)
@@ -196,6 +212,8 @@ public sealed class StressorAppRunner
         string interval,
         int cycles,
         string? auth,
+        bool verbose,
+        bool prettyPrint,
         CancellationToken cancellationToken)
     {
         return await ExecuteAsync(
@@ -206,6 +224,8 @@ public sealed class StressorAppRunner
             interval,
             cycles,
             auth,
+            verbose,
+            prettyPrint,
             cancellationToken,
             serviceProvider).ConfigureAwait(false);
     }

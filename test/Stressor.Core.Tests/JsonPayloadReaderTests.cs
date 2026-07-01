@@ -9,7 +9,7 @@ public class JsonPayloadReaderTests
     {
         var path = await WriteTempFileAsync("{\"name\":\"test\"}");
 
-        var payloads = await reader.ReadAsync(path);
+        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal("{\"name\":\"test\"}", payloads[0]);
@@ -20,7 +20,7 @@ public class JsonPayloadReaderTests
     {
         var path = await WriteTempFileAsync("[1,2,3]");
 
-        var payloads = await reader.ReadAsync(path);
+        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal("[1,2,3]", payloads[0]);
@@ -32,7 +32,7 @@ public class JsonPayloadReaderTests
         var json = "{\"items\":[{\"id\":1},{\"id\":2}],\"meta\":{\"count\":2}}";
         var path = await WriteTempFileAsync(json);
 
-        var payloads = await reader.ReadAsync(path);
+        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal(json, payloads[0]);
@@ -43,7 +43,7 @@ public class JsonPayloadReaderTests
     {
         var path = await WriteTempFileAsync("\"hello\"");
 
-        var payloads = await reader.ReadAsync(path);
+        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal("\"hello\"", payloads[0]);
@@ -54,7 +54,7 @@ public class JsonPayloadReaderTests
     {
         var path = await WriteTempFileAsync("null");
 
-        var payloads = await reader.ReadAsync(path);
+        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal("null", payloads[0]);
@@ -65,7 +65,7 @@ public class JsonPayloadReaderTests
     {
         var path = await WriteTempFileAsync("{}");
 
-        var payloads = await reader.ReadAsync(path);
+        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal("{}", payloads[0]);
@@ -77,7 +77,7 @@ public class JsonPayloadReaderTests
         var json = "{\"orderId\":1,\"payloads\":[1,2]}";
         var path = await WriteTempFileAsync(json);
 
-        var payloads = await reader.ReadAsync(path);
+        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal(json, payloads[0]);
@@ -89,7 +89,7 @@ public class JsonPayloadReaderTests
         var json = "{\"Payloads\":[{\"id\":1}]}";
         var path = await WriteTempFileAsync(json);
 
-        var payloads = await reader.ReadAsync(path);
+        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal(json, payloads[0]);
@@ -101,7 +101,7 @@ public class JsonPayloadReaderTests
         var json = "{\"payloads\":[{\"id\":1}],\"extra\":1}";
         var path = await WriteTempFileAsync(json);
 
-        var payloads = await reader.ReadAsync(path);
+        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal(json, payloads[0]);
@@ -113,7 +113,7 @@ public class JsonPayloadReaderTests
         var json = "{\n  \"name\": \"test\"\n}";
         var path = await WriteTempFileAsync(json);
 
-        var payloads = await reader.ReadAsync(path);
+        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal(json, payloads[0]);
@@ -124,7 +124,7 @@ public class JsonPayloadReaderTests
     {
         var path = await WriteTempFileAsync("{\"payloads\":[{\"id\":1},{\"id\":2}]}");
 
-        var payloads = await reader.ReadAsync(path);
+        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Equal(2, payloads.Count);
         Assert.Equal("{\"id\":1}", payloads[0]);
@@ -136,7 +136,7 @@ public class JsonPayloadReaderTests
     {
         var path = await WriteTempFileAsync("{\"payloads\":[{\"id\":1}]}");
 
-        var payloads = await reader.ReadAsync(path);
+        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal("{\"id\":1}", payloads[0]);
@@ -147,7 +147,7 @@ public class JsonPayloadReaderTests
     {
         var path = await WriteTempFileAsync("{\"payloads\":[{\"id\":1},[1,2],\"text\",42,null]}");
 
-        var payloads = await reader.ReadAsync(path);
+        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Equal(5, payloads.Count);
         Assert.Equal("{\"id\":1}", payloads[0]);
@@ -162,7 +162,7 @@ public class JsonPayloadReaderTests
     {
         var path = await WriteTempFileAsync("{\"payloads\":[[1,2]]}");
 
-        var payloads = await reader.ReadAsync(path);
+        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal("[1,2]", payloads[0]);
@@ -172,7 +172,7 @@ public class JsonPayloadReaderTests
     public async Task ReadAsync_FileNotFound_ThrowsFileNotFoundException()
     {
         await Assert.ThrowsAsync<FileNotFoundException>(() =>
-            reader.ReadAsync(Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json")));
+            reader.ReadAsync(Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json"), TestCancellation.Token));
     }
 
     [Fact]
@@ -180,7 +180,7 @@ public class JsonPayloadReaderTests
     {
         var path = await WriteTempFileAsync("{ invalid }");
 
-        await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path));
+        await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path, TestCancellation.Token));
     }
 
     [Fact]
@@ -188,7 +188,7 @@ public class JsonPayloadReaderTests
     {
         var path = await WriteTempFileAsync(string.Empty);
 
-        await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path));
+        await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path, TestCancellation.Token));
     }
 
     [Fact]
@@ -196,7 +196,7 @@ public class JsonPayloadReaderTests
     {
         var path = await WriteTempFileAsync("   \t\n  ");
 
-        await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path));
+        await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path, TestCancellation.Token));
     }
 
     [Fact]
@@ -204,7 +204,7 @@ public class JsonPayloadReaderTests
     {
         var path = await WriteTempFileAsync("{\"payloads\":[]}");
 
-        var exception = await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path));
+        var exception = await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path, TestCancellation.Token));
 
         Assert.Equal("Payload array is empty.", exception.Message);
     }
@@ -214,7 +214,7 @@ public class JsonPayloadReaderTests
     {
         var path = await WriteTempFileAsync("{\"payloads\":null}");
 
-        var exception = await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path));
+        var exception = await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path, TestCancellation.Token));
 
         Assert.Equal("The payloads property must be a JSON array.", exception.Message);
     }
@@ -224,7 +224,7 @@ public class JsonPayloadReaderTests
     {
         var path = await WriteTempFileAsync("{\"payloads\":\"text\"}");
 
-        var exception = await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path));
+        var exception = await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path, TestCancellation.Token));
 
         Assert.Equal("The payloads property must be a JSON array.", exception.Message);
     }
@@ -234,7 +234,7 @@ public class JsonPayloadReaderTests
     {
         var path = await WriteTempFileAsync("{\"payloads\":{}}");
 
-        var exception = await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path));
+        var exception = await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path, TestCancellation.Token));
 
         Assert.Equal("The payloads property must be a JSON array.", exception.Message);
     }
@@ -242,7 +242,7 @@ public class JsonPayloadReaderTests
     private static async Task<string> WriteTempFileAsync(string content)
     {
         var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json");
-        await File.WriteAllTextAsync(path, content);
+        await File.WriteAllTextAsync(path, content, TestCancellation.Token);
         return path;
     }
 }

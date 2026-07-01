@@ -29,14 +29,29 @@ public sealed class HttpStressTestClient : IHttpStressTestClient
             using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
             stopwatch.Stop();
 
+            if (response.IsSuccessStatusCode)
+            {
+                return new RequestOutcome(
+                    cycleNumber,
+                    requestNumber,
+                    true,
+                    false,
+                    (int)response.StatusCode,
+                    stopwatch.Elapsed,
+                    null);
+            }
+
+            var errorMessage = await RequestFailureFormatter.FormatHttpErrorAsync(response, cancellationToken)
+                .ConfigureAwait(false);
+
             return new RequestOutcome(
                 cycleNumber,
                 requestNumber,
-                response.IsSuccessStatusCode,
+                false,
                 false,
                 (int)response.StatusCode,
                 stopwatch.Elapsed,
-                response.IsSuccessStatusCode ? null : $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}");
+                errorMessage);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -50,6 +65,18 @@ public sealed class HttpStressTestClient : IHttpStressTestClient
                 stopwatch.Elapsed,
                 "Request was cancelled.");
         }
+        catch (OperationCanceledException)
+        {
+            stopwatch.Stop();
+            return new RequestOutcome(
+                cycleNumber,
+                requestNumber,
+                false,
+                false,
+                null,
+                stopwatch.Elapsed,
+                RequestFailureFormatter.FormatTimeout());
+        }
         catch (Exception ex)
         {
             stopwatch.Stop();
@@ -60,7 +87,7 @@ public sealed class HttpStressTestClient : IHttpStressTestClient
                 false,
                 null,
                 stopwatch.Elapsed,
-                ex.Message);
+                RequestFailureFormatter.FormatException(ex));
         }
     }
 

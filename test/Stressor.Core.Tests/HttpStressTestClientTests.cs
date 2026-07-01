@@ -1,6 +1,7 @@
 namespace Stressor.Core.Tests;
 
 using System.Net;
+using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 
 public class HttpStressTestClientTests
@@ -15,7 +16,7 @@ public class HttpStressTestClientTests
         var client = CreateClient(handler);
         var options = CreateOptions(new HttpMethod(methodName));
 
-        var outcome = await client.SendAsync(options, "{\"a\":1}", 1, 1);
+        var outcome = await client.SendAsync(options, "{\"a\":1}", 1, 1, TestCancellation.Token);
 
         Assert.True(outcome.IsSuccess);
         var request = Assert.Single(handler.Requests);
@@ -37,7 +38,7 @@ public class HttpStressTestClientTests
         var client = CreateClient(handler);
         var options = CreateOptions(new HttpMethod(methodName));
 
-        await client.SendAsync(options, "{\"a\":1}", 1, 1);
+        await client.SendAsync(options, "{\"a\":1}", 1, 1, TestCancellation.Token);
 
         var request = Assert.Single(handler.Requests);
         Assert.Null(request.Content);
@@ -49,7 +50,7 @@ public class HttpStressTestClientTests
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
         var client = CreateClient(handler);
 
-        var outcome = await client.SendAsync(CreateOptions(HttpMethod.Post), "{}", 1, 1);
+        var outcome = await client.SendAsync(CreateOptions(HttpMethod.Post), "{}", 1, 1, TestCancellation.Token);
 
         Assert.True(outcome.IsSuccess);
         Assert.Equal(200, outcome.StatusCode);
@@ -58,12 +59,29 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
+    public async Task SendAsync_ErrorStatusCode_IncludesResponseBodySummary()
+    {
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent("""{"detail":"Invalid order"}""", Encoding.UTF8, "application/json")
+        });
+        var client = CreateClient(handler);
+
+        var outcome = await client.SendAsync(CreateOptions(HttpMethod.Post), "{}", 1, 1, TestCancellation.Token);
+
+        Assert.False(outcome.IsSuccess);
+        Assert.Equal(400, outcome.StatusCode);
+        Assert.Contains("HTTP 400 Bad Request", outcome.ErrorMessage, StringComparison.Ordinal);
+        Assert.Contains("detail: Invalid order", outcome.ErrorMessage, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task SendAsync_ErrorStatusCode_MarksFailure()
     {
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
         var client = CreateClient(handler);
 
-        var outcome = await client.SendAsync(CreateOptions(HttpMethod.Post), "{}", 1, 1);
+        var outcome = await client.SendAsync(CreateOptions(HttpMethod.Post), "{}", 1, 1, TestCancellation.Token);
 
         Assert.False(outcome.IsSuccess);
         Assert.Equal(500, outcome.StatusCode);
@@ -76,23 +94,38 @@ public class HttpStressTestClientTests
         var handler = new StubHttpMessageHandler(_ => throw new HttpRequestException("network down"));
         var client = CreateClient(handler);
 
-        var outcome = await client.SendAsync(CreateOptions(HttpMethod.Post), "{}", 1, 1);
+        var outcome = await client.SendAsync(CreateOptions(HttpMethod.Post), "{}", 1, 1, TestCancellation.Token);
 
         Assert.False(outcome.IsSuccess);
         Assert.Contains("network down", outcome.ErrorMessage, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task SendAsync_TaskCanceledException_RecordsFailure()
+    public async Task SendAsync_HttpRequestException_UnwrapsInnerExceptionMessage()
+    {
+        var handler = new StubHttpMessageHandler(_ => throw new HttpRequestException(
+            "No connection could be made",
+            new IOException("Connection refused")));
+        var client = CreateClient(handler);
+
+        var outcome = await client.SendAsync(CreateOptions(HttpMethod.Post), "{}", 1, 1, TestCancellation.Token);
+
+        Assert.False(outcome.IsSuccess);
+        Assert.Contains("No connection could be made", outcome.ErrorMessage, StringComparison.Ordinal);
+        Assert.Contains("Connection refused", outcome.ErrorMessage, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SendAsync_TaskCanceledException_RecordsTimeoutMessage()
     {
         var handler = new StubHttpMessageHandler(_ => throw new TaskCanceledException());
         var client = CreateClient(handler);
 
-        var outcome = await client.SendAsync(CreateOptions(HttpMethod.Post), "{}", 1, 1);
+        var outcome = await client.SendAsync(CreateOptions(HttpMethod.Post), "{}", 1, 1, TestCancellation.Token);
 
         Assert.False(outcome.IsSuccess);
         Assert.False(outcome.IsCancelled);
-        Assert.NotNull(outcome.ErrorMessage);
+        Assert.Equal("Request timed out.", outcome.ErrorMessage);
     }
 
     [Fact]
@@ -115,7 +148,7 @@ public class HttpStressTestClientTests
         var client = CreateClient(handler);
         var options = CreateOptions(HttpMethod.Post) with { Auth = "Bearer secret-token" };
 
-        await client.SendAsync(options, "{}", 1, 1);
+        await client.SendAsync(options, "{}", 1, 1, TestCancellation.Token);
 
         var request = Assert.Single(handler.Requests);
         Assert.Equal("Bearer secret-token", request.Headers.Authorization?.ToString());
@@ -127,7 +160,7 @@ public class HttpStressTestClientTests
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
         var client = CreateClient(handler);
 
-        await client.SendAsync(CreateOptions(HttpMethod.Post), "{}", 1, 1);
+        await client.SendAsync(CreateOptions(HttpMethod.Post), "{}", 1, 1, TestCancellation.Token);
 
         var request = Assert.Single(handler.Requests);
         Assert.Null(request.Headers.Authorization);

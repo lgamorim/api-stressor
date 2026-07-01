@@ -33,11 +33,11 @@ public sealed class StressTestRunner : IStressTestRunner
 
         reporter.WriteSessionStart(options);
 
-        var perRequestDelay = TimeSpan.FromTicks(options.Interval.Ticks / options.RequestsPerInterval);
+        var elapsed = TimeSpan.Zero;
+        TimeSpan? nextRequestStart = null;
 
         for (var cycle = 1; cycle <= options.Cycles && !cancellationToken.IsCancellationRequested; cycle++)
         {
-            var cycleElapsed = TimeSpan.Zero;
             var cycleOutcomes = new List<RequestOutcome>();
 
             for (var request = 1; request <= options.RequestsPerInterval; request++)
@@ -48,7 +48,18 @@ public sealed class StressTestRunner : IStressTestRunner
                     break;
                 }
 
+                if (nextRequestStart is not null)
+                {
+                    var waitTime = nextRequestStart.Value - elapsed;
+                    if (waitTime > TimeSpan.Zero)
+                    {
+                        await delayProvider.DelayAsync(waitTime, cancellationToken).ConfigureAwait(false);
+                        elapsed += waitTime;
+                    }
+                }
+
                 var payload = payloads[(request - 1) % payloads.Count];
+                var requestStart = elapsed;
 
                 var outcome = await httpClient.SendAsync(
                     options,
@@ -57,24 +68,28 @@ public sealed class StressTestRunner : IStressTestRunner
                     request,
                     cancellationToken).ConfigureAwait(false);
 
+                elapsed += outcome.Latency;
+                nextRequestStart = requestStart + options.Interval;
+
                 cycleOutcomes.Add(outcome);
                 outcomes.Add(outcome);
+
+                if (options.Verbose || options.PrettyPrint)
+                {
+                    reporter.WriteVerboseRequest(
+                        cycle,
+                        options.Cycles,
+                        request,
+                        options.RequestsPerInterval,
+                        payload,
+                        options.PrettyPrint,
+                        outcome);
+                }
 
                 if (outcome.IsCancelled)
                 {
                     wasCancelled = true;
                     break;
-                }
-
-                if (request < options.RequestsPerInterval && !cancellationToken.IsCancellationRequested)
-                {
-                    var targetElapsed = perRequestDelay * request;
-                    var waitTime = targetElapsed - cycleElapsed;
-                    if (waitTime > TimeSpan.Zero)
-                    {
-                        await delayProvider.DelayAsync(waitTime, cancellationToken).ConfigureAwait(false);
-                        cycleElapsed += waitTime;
-                    }
                 }
             }
 
@@ -84,15 +99,6 @@ public sealed class StressTestRunner : IStressTestRunner
             {
                 wasCancelled = true;
                 break;
-            }
-
-            if (cycle < options.Cycles)
-            {
-                var cycleRemainder = options.Interval - cycleElapsed;
-                if (cycleRemainder > TimeSpan.Zero)
-                {
-                    await delayProvider.DelayAsync(cycleRemainder, cancellationToken).ConfigureAwait(false);
-                }
             }
         }
 

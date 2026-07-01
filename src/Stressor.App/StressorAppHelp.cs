@@ -34,8 +34,11 @@ public static class StressorAppHelp
         output.WriteLine("    per request within each cycle, wrapping when requests exceed payload count.");
         output.WriteLine();
         output.WriteLine("Load:");
-        output.WriteLine("  Each cycle sends --requests calls spread evenly across --interval.");
+        output.WriteLine("  --interval is the minimum delay between consecutive request starts.");
+        output.WriteLine("  Each cycle sends --requests calls; pacing continues across cycle boundaries.");
         output.WriteLine("  Total requests in a session = requests x cycles.");
+        output.WriteLine("  Use --verbose to print each request position, payload, success latency, and failure reason.");
+        output.WriteLine("  Use --prettyprint to print each request with indented JSON payloads.");
         output.WriteLine();
         output.WriteLine("Supported HTTP methods:");
         output.WriteLine("  GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS");

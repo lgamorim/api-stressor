@@ -28,7 +28,7 @@ public sealed class ConsoleSessionReporter : IConsoleSessionReporter
             output.WriteLine("  Auth:     configured");
         }
 
-        output.WriteLine($"  Rate:     {options.RequestsPerInterval.ToString(CultureInfo.InvariantCulture)} requests / {FormatInterval(options.Interval)}");
+        output.WriteLine($"  Rate:     {options.RequestsPerInterval.ToString(CultureInfo.InvariantCulture)} requests/cycle, {FormatInterval(options.Interval)} between starts");
         output.WriteLine($"  Cycles:   {options.Cycles.ToString(CultureInfo.InvariantCulture)} ({totalRequests.ToString(CultureInfo.InvariantCulture)} total requests)");
         output.WriteLine();
     }
@@ -44,6 +44,32 @@ public sealed class ConsoleSessionReporter : IConsoleSessionReporter
 
         output.WriteLine(
             $"Cycle {cycleNumber.ToString(CultureInfo.InvariantCulture)}/{totalCycles.ToString(CultureInfo.InvariantCulture)}  OK {succeeded.ToString(CultureInfo.InvariantCulture)}  Fail {failed.ToString(CultureInfo.InvariantCulture)}  Avg {averageMs.ToString("F0", CultureInfo.InvariantCulture)}ms");
+    }
+
+    public void WriteVerboseRequest(
+        int cycleNumber,
+        int totalCycles,
+        int requestNumber,
+        int requestsPerInterval,
+        string payload,
+        bool prettyPrint,
+        RequestOutcome outcome)
+    {
+        output.WriteLine(
+            $"Request {requestNumber.ToString(CultureInfo.InvariantCulture)}/{requestsPerInterval.ToString(CultureInfo.InvariantCulture)} (cycle {cycleNumber.ToString(CultureInfo.InvariantCulture)}/{totalCycles.ToString(CultureInfo.InvariantCulture)})");
+        output.WriteLine(prettyPrint ? JsonPayloadFormatter.PrettyPrint(payload) : payload);
+
+        if (outcome.IsSuccess)
+        {
+            var latencyMs = outcome.Latency.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture);
+            output.WriteLine($"{ConsoleStyling.FormatSuccessPrefix(output)}{latencyMs}ms");
+        }
+        else if (outcome.ErrorMessage is not null)
+        {
+            output.WriteLine($"{ConsoleStyling.FormatErrorPrefix(output)}{outcome.ErrorMessage}");
+        }
+
+        output.WriteLine();
     }
 
     public void WriteSessionComplete(SessionReport report)

@@ -48,11 +48,13 @@ When running the built executable:
 |--------|-------|----------|-------------|
 | `--url` | `-u` | Yes | Full URL of the API endpoint (must start with `http://` or `https://`) |
 | `--payload` | `-p` | Yes | Path to a JSON payload file (single body or multi-payload envelope) |
-| `--requests` | `-r` | Yes | Number of requests to send during each interval |
-| `--interval` | `-i` | Yes | Length of each interval (see formats below) |
-| `--cycles` | `-c` | Yes | How many intervals to run |
+| `--requests` | `-r` | Yes | Number of requests to send per cycle |
+| `--interval` | `-i` | Yes | Minimum delay between consecutive request starts (see formats below) |
+| `--cycles` | `-c` | Yes | Number of cycles to run |
 | `--method` | `-m` | No | HTTP method to use (default: `POST`) |
 | `--auth` | `-a` | No | Authorization header value sent with each request (e.g. `Bearer <token>`) |
+| `--verbose` | `-v` | No | Print per-request position, payload, and failure details |
+| `--prettyprint` | `-pp` | No | Print per-request output with indented JSON payloads |
 | `--help` | `-h` | No | Show usage information and exit |
 
 ### Supported HTTP methods
@@ -81,7 +83,9 @@ The `--interval` value can be written in several ways:
 
 ## How load is applied
 
-Each **cycle** is one interval. Within a cycle, the tool sends `--requests` calls spread evenly across `--interval`. For example, `--requests 10 --interval 1s` sends about one request every 100 milliseconds for one second.
+Each **cycle** sends `--requests` calls. The first request in a session starts immediately; each subsequent request waits until `--interval` has elapsed since the previous request **started**. If a request takes longer than the interval, the next request starts as soon as the slow one finishes.
+
+For example, `--requests 10 --interval 1s --cycles 1` sends 10 requests with about one second between each start (when responses are fast).
 
 The total number of requests in a session is:
 
@@ -89,7 +93,7 @@ The total number of requests in a session is:
 requests × cycles
 ```
 
-So `--requests 10 --interval 1s --cycles 60` sends 600 requests over roughly 60 seconds.
+So `--requests 10 --interval 1s --cycles 60` sends 600 requests with about one second between consecutive starts (roughly 10 minutes of pacing when responses are fast).
 
 ## Payload file
 
@@ -174,7 +178,7 @@ Stress test starting
   URL:      https://api.example.com/orders
   Method:   POST
   Auth:     configured
-  Rate:     10 requests / 1s
+  Rate:     10 requests/cycle, 1s between starts
   Cycles:   60 (600 total requests)
 
 Cycle 1/60  OK 10  Fail 0  Avg 45ms

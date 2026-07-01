@@ -83,4 +83,80 @@ public class StressTestOptionsValidatorTests
 
         Assert.Empty(errors);
     }
+
+    [Fact]
+    public void Validate_ZeroInterval_ReturnsError()
+    {
+        var options = CreateValidOptions() with { Interval = TimeSpan.Zero };
+
+        var errors = StressTestOptionsValidator.Validate(options);
+
+        Assert.Contains(errors, e => e.Contains("Interval", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Validate_NegativeInterval_ReturnsError()
+    {
+        var options = CreateValidOptions() with { Interval = TimeSpan.FromSeconds(-1) };
+
+        var errors = StressTestOptionsValidator.Validate(options);
+
+        Assert.Contains(errors, e => e.Contains("Interval", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Validate_EmptyPayloadPath_ReturnsError()
+    {
+        var options = CreateValidOptions() with { PayloadFilePath = "" };
+
+        var errors = StressTestOptionsValidator.Validate(options);
+
+        Assert.Contains(errors, e => e.Contains("Payload", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Validate_WhitespacePayloadPath_ReturnsError()
+    {
+        var options = CreateValidOptions() with { PayloadFilePath = "   " };
+
+        var errors = StressTestOptionsValidator.Validate(options);
+
+        Assert.Contains(errors, e => e.Contains("Payload", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Validate_ZeroCycles_ReturnsError()
+    {
+        var options = CreateValidOptions() with { Cycles = 0 };
+
+        var errors = StressTestOptionsValidator.Validate(options);
+
+        Assert.Contains(errors, e => e.Contains("Cycles", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Validate_NegativeRequests_ReturnsError()
+    {
+        var options = CreateValidOptions() with { RequestsPerInterval = -1 };
+
+        var errors = StressTestOptionsValidator.Validate(options);
+
+        Assert.Contains(errors, e => e.Contains("Requests per interval", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Validate_MultipleInvalidFields_ReturnsAllErrors()
+    {
+        var options = CreateValidOptions() with
+        {
+            RequestsPerInterval = 0,
+            Interval = TimeSpan.Zero
+        };
+
+        var errors = StressTestOptionsValidator.Validate(options);
+
+        Assert.True(errors.Count >= 2);
+        Assert.Contains(errors, e => e.Contains("Requests per interval", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(errors, e => e.Contains("Interval", StringComparison.OrdinalIgnoreCase));
+    }
 }

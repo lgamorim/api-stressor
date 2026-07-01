@@ -7,4 +7,6 @@ public sealed record StressTestOptions(
     int RequestsPerInterval,
     TimeSpan Interval,
     int Cycles,
-    string? Auth = null);
+    string? Auth = null,
+    bool Verbose = false,
+    bool PrettyPrint = false);
