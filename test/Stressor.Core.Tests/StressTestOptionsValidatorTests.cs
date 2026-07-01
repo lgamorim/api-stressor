@@ -135,6 +135,16 @@ public class StressTestOptionsValidatorTests
     }
 
     [Fact]
+    public void Validate_OneCycle_ReturnsNoErrors()
+    {
+        var options = CreateValidOptions() with { Cycles = 1 };
+
+        var errors = StressTestOptionsValidator.Validate(options);
+
+        Assert.Empty(errors);
+    }
+
+    [Fact]
     public void Validate_NegativeRequests_ReturnsError()
     {
         var options = CreateValidOptions() with { RequestsPerInterval = -1 };

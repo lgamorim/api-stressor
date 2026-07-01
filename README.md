@@ -16,16 +16,17 @@ dotnet run --project src/Stressor.App -- `
   --payload <path-to-payload.json> `
   --requests <count> `
   --interval <duration> `
-  --cycles <count> `
+  [--cycles <count>] `
   [--method <http-verb>] `
-  [--auth <authorization-header-value>]
+  [--auth <authorization-header-value>] `
+  [--load|-l <gentle-pacing|fixed-rate>]
 ```
 
 You can also build and run the executable directly:
 
 ```powershell
 dotnet build src/Stressor.App
-./src/Stressor.App/bin/Debug/net10.0/Stressor.App.exe --url ... --payload ... --requests ... --interval ... --cycles ...
+./src/Stressor.App/bin/Debug/net10.0/Stressor.App.exe --url ... --payload ... --requests ... --interval ...
 ```
 
 ## Getting help
@@ -49,10 +50,11 @@ When running the built executable:
 | `--url` | `-u` | Yes | Full URL of the API endpoint (must start with `http://` or `https://`) |
 | `--payload` | `-p` | Yes | Path to a JSON payload file (single body or multi-payload envelope) |
 | `--requests` | `-r` | Yes | Number of requests to send per cycle |
-| `--interval` | `-i` | Yes | Minimum delay between consecutive request starts (see formats below) |
-| `--cycles` | `-c` | Yes | Number of cycles to run |
+| `--interval` | `-i` | Yes | Delay between consecutive request starts (see formats and load modes below) |
+| `--cycles` | `-c` | No | Number of cycles to run (default: `1`) |
 | `--method` | `-m` | No | HTTP method to use (default: `POST`) |
 | `--auth` | `-a` | No | Authorization header value sent with each request (e.g. `Bearer <token>`) |
+| `--load` | `-l` | No | Load handling mode: `gentle-pacing` (default) or `fixed-rate` |
 | `--verbose` | `-v` | No | Print per-request position, payload, and failure details |
 | `--prettyprint` | `-pp` | No | Print per-request output with indented JSON payloads |
 | `--help` | `-h` | No | Show usage information and exit |
@@ -83,17 +85,27 @@ The `--interval` value can be written in several ways:
 
 ## How load is applied
 
-Each **cycle** sends `--requests` calls. The first request in a session starts immediately; each subsequent request waits until `--interval` has elapsed since the previous request **started**. If a request takes longer than the interval, the next request starts as soon as the slow one finishes.
-
-For example, `--requests 10 --interval 1s --cycles 1` sends 10 requests with about one second between each start (when responses are fast).
-
-The total number of requests in a session is:
+Use `--load` to choose how requests are scheduled. Each **cycle** sends `--requests` calls. Pacing continues across cycle boundaries. The total number of requests in a session is:
 
 ```
 requests × cycles
 ```
 
+### `gentle-pacing` (default)
+
+The first request in a session starts immediately. Each subsequent request waits until `--interval` has elapsed since the previous request **started**. If a request takes longer than the interval, the next request starts as soon as the slow one finishes. Only one request is in flight at a time.
+
+For example, `--requests 10 --interval 1s --cycles 1` sends 10 requests with about one second between each start (when responses are fast).
+
 So `--requests 10 --interval 1s --cycles 60` sends 600 requests with about one second between consecutive starts (roughly 10 minutes of pacing when responses are fast).
+
+### `fixed-rate`
+
+Each request starts every `--interval` on a fixed session timeline (`0s`, `interval`, `2 × interval`, …), even if earlier requests are still running. Multiple requests may be in flight at once.
+
+For example, `--load fixed-rate --requests 10 --interval 1s --cycles 1` starts one request per second for 10 seconds regardless of response time.
+
+With `--verbose`, per-request OK/Fail lines include a session-wide `(index/total)` prefix (for example `OK: (5/60) 45ms`) so you can identify results when completions arrive out of order.
 
 ## Payload file
 
@@ -156,6 +168,22 @@ dotnet run --project src/Stressor.App -- `
 
 This sends 600 POST requests to the orders endpoint at a rate of 10 per second for about one minute.
 
+### Fixed-rate load
+
+```powershell
+dotnet run --project src/Stressor.App -- `
+  --url https://api.example.com/orders `
+  --payload ./payload.json `
+  --method POST `
+  --requests 10 `
+  --interval 1s `
+  --cycles 60 `
+  --load fixed-rate `
+  --verbose
+```
+
+This starts one request per second for 600 seconds regardless of how long responses take. Use `--verbose` to see each result with a session-wide `(index/total)` prefix.
+
 ### Authenticated endpoint
 
 ```powershell
@@ -179,6 +207,7 @@ Stress test starting
   Method:   POST
   Auth:     configured
   Rate:     10 requests/cycle, 1s between starts
+  Load:     gentle-pacing
   Cycles:   60 (600 total requests)
 
 Cycle 1/60  OK 10  Fail 0  Avg 45ms
@@ -194,9 +223,11 @@ Session complete
 - **Avg** — average response time for successful requests in that cycle
 - **Auth: configured** — shown when `--auth` was provided (the token itself is not printed)
 
+With `--verbose`, each request also prints its position, payload, and an OK or Fail line. In `fixed-rate` mode, OK/Fail lines include `(index/total)` before the latency or error message.
+
 ## Stopping early
 
-Press **Ctrl+C** to stop the session. The tool finishes the current in-flight request, prints a partial report, and exits.
+Press **Ctrl+C** to stop the session. The tool stops scheduling new requests, waits for already-started requests to finish, prints a partial report, and exits. With `fixed-rate`, multiple requests may still be in flight when you cancel.
 
 ## Exit codes
 

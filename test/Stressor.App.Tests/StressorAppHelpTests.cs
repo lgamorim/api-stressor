@@ -21,6 +21,9 @@ public class StressorAppHelpTests
         Assert.Contains("--auth", help);
         Assert.Contains("--verbose", help);
         Assert.Contains("--prettyprint", help);
+        Assert.Contains("--load", help);
+        Assert.Contains("gentle-pacing", help);
+        Assert.Contains("fixed-rate", help);
         Assert.Contains("success latency", help, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Supported HTTP methods:", help);
         Assert.Contains("Interval formats:", help);

@@ -29,6 +29,7 @@ public sealed class ConsoleSessionReporter : IConsoleSessionReporter
         }
 
         output.WriteLine($"  Rate:     {options.RequestsPerInterval.ToString(CultureInfo.InvariantCulture)} requests/cycle, {FormatInterval(options.Interval)} between starts");
+        output.WriteLine($"  Load:     {FormatLoadMode(options.Load)}");
         output.WriteLine($"  Cycles:   {options.Cycles.ToString(CultureInfo.InvariantCulture)} ({totalRequests.ToString(CultureInfo.InvariantCulture)} total requests)");
         output.WriteLine();
     }
@@ -53,20 +54,27 @@ public sealed class ConsoleSessionReporter : IConsoleSessionReporter
         int requestsPerInterval,
         string payload,
         bool prettyPrint,
+        LoadMode loadMode,
+        int sessionRequestIndex,
+        int sessionTotalRequests,
         RequestOutcome outcome)
     {
         output.WriteLine(
             $"Request {requestNumber.ToString(CultureInfo.InvariantCulture)}/{requestsPerInterval.ToString(CultureInfo.InvariantCulture)} (cycle {cycleNumber.ToString(CultureInfo.InvariantCulture)}/{totalCycles.ToString(CultureInfo.InvariantCulture)})");
         output.WriteLine(prettyPrint ? JsonPayloadFormatter.PrettyPrint(payload) : payload);
 
+        var sessionIndexPrefix = loadMode == LoadMode.FixedRate
+            ? $"({sessionRequestIndex.ToString(CultureInfo.InvariantCulture)}/{sessionTotalRequests.ToString(CultureInfo.InvariantCulture)}) "
+            : string.Empty;
+
         if (outcome.IsSuccess)
         {
             var latencyMs = outcome.Latency.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture);
-            output.WriteLine($"{ConsoleStyling.FormatSuccessPrefix(output)}{latencyMs}ms");
+            output.WriteLine($"{ConsoleStyling.FormatSuccessPrefix(output)}{sessionIndexPrefix}{latencyMs}ms");
         }
         else if (outcome.ErrorMessage is not null)
         {
-            output.WriteLine($"{ConsoleStyling.FormatErrorPrefix(output)}{outcome.ErrorMessage}");
+            output.WriteLine($"{ConsoleStyling.FormatErrorPrefix(output)}{sessionIndexPrefix}{outcome.ErrorMessage}");
         }
 
         output.WriteLine();
@@ -100,6 +108,14 @@ public sealed class ConsoleSessionReporter : IConsoleSessionReporter
                 $"  Latency:   min {report.MinLatency.Value.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture)}ms  avg {report.AverageLatency!.Value.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture)}ms  max {report.MaxLatency!.Value.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture)}ms");
         }
     }
+
+    private static string FormatLoadMode(LoadMode loadMode) =>
+        loadMode switch
+        {
+            LoadMode.GentlePacing => "gentle-pacing",
+            LoadMode.FixedRate => "fixed-rate",
+            _ => loadMode.ToString()
+        };
 
     private static string FormatInterval(TimeSpan interval)
     {

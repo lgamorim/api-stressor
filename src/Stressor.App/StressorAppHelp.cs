@@ -23,6 +23,9 @@ public static class StressorAppHelp
         output.WriteLine();
         output.WriteLine("Examples:");
         output.WriteLine("  Stressor.App --url https://api.example.com/orders --payload ./payload.json \\");
+        output.WriteLine("    --requests 10 --interval 1s");
+        output.WriteLine();
+        output.WriteLine("  Stressor.App --url https://api.example.com/orders --payload ./payload.json \\");
         output.WriteLine("    --requests 10 --interval 1s --cycles 60");
         output.WriteLine();
         output.WriteLine("  Stressor.App -u https://api.example.com/orders -p ./payloads.json -m POST \\");
@@ -34,10 +37,13 @@ public static class StressorAppHelp
         output.WriteLine("    per request within each cycle, wrapping when requests exceed payload count.");
         output.WriteLine();
         output.WriteLine("Load:");
-        output.WriteLine("  --interval is the minimum delay between consecutive request starts.");
+        output.WriteLine("  --load gentle-pacing (default): minimum delay between request starts; waits for each response.");
+        output.WriteLine("  --load fixed-rate: starts every interval on a fixed schedule; requests may overlap.");
+        output.WriteLine("  --interval is the spacing between consecutive request starts (minimum for gentle-pacing, exact for fixed-rate).");
         output.WriteLine("  Each cycle sends --requests calls; pacing continues across cycle boundaries.");
         output.WriteLine("  Total requests in a session = requests x cycles.");
         output.WriteLine("  Use --verbose to print each request position, payload, success latency, and failure reason.");
+        output.WriteLine("  With fixed-rate and --verbose, OK/Fail lines include a session-wide (index/total) prefix.");
         output.WriteLine("  Use --prettyprint to print each request with indented JSON payloads.");
         output.WriteLine();
         output.WriteLine("Supported HTTP methods:");

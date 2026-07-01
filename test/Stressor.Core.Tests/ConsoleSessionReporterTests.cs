@@ -198,13 +198,62 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
+    public void WriteVerboseRequest_FixedRate_Success_PrintsSessionIndexBeforeLatency()
+    {
+        var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var reporter = new ConsoleSessionReporter(writer);
+        var outcome = new RequestOutcome(1, 3, true, false, 200, TimeSpan.FromMilliseconds(40), null);
+
+        reporter.WriteVerboseRequest(1, 1, 3, 10, "{}", false, LoadMode.FixedRate, 3, 10, outcome);
+
+        Assert.Contains("OK: (3/10) 40ms", writer.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WriteVerboseRequest_FixedRate_Failure_PrintsSessionIndexBeforeMessage()
+    {
+        var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var reporter = new ConsoleSessionReporter(writer);
+        var outcome = new RequestOutcome(1, 3, false, false, 500, TimeSpan.FromMilliseconds(40), "HTTP 500 Internal Server Error");
+
+        reporter.WriteVerboseRequest(1, 1, 3, 10, "{}", false, LoadMode.FixedRate, 3, 10, outcome);
+
+        Assert.Contains("Fail: (3/10) HTTP 500 Internal Server Error", writer.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WriteVerboseRequest_GentlePacing_Success_OmitsSessionIndex()
+    {
+        var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var reporter = new ConsoleSessionReporter(writer);
+        var outcome = new RequestOutcome(1, 2, true, false, 200, TimeSpan.FromMilliseconds(40), null);
+
+        reporter.WriteVerboseRequest(1, 3, 2, 10, "{}", false, LoadMode.GentlePacing, 2, 30, outcome);
+
+        Assert.Contains("OK: 40ms", writer.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("(2/30)", writer.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WriteSessionStart_FixedRate_PrintsLoadMode()
+    {
+        var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var reporter = new ConsoleSessionReporter(writer);
+        var options = CreateOptions() with { Load = LoadMode.FixedRate };
+
+        reporter.WriteSessionStart(options);
+
+        Assert.Contains("Load:     fixed-rate", writer.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void WriteVerboseRequest_Success_PrintsPositionAndPayload()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
         var outcome = new RequestOutcome(1, 2, true, false, 200, TimeSpan.FromMilliseconds(40), null);
 
-        reporter.WriteVerboseRequest(1, 3, 2, 10, """{"foo":"bar"}""", false, outcome);
+        reporter.WriteVerboseRequest(1, 3, 2, 10, """{"foo":"bar"}""", false, LoadMode.GentlePacing, 2, 30, outcome);
 
         var output = writer.ToString();
         Assert.Contains("Request 2/10 (cycle 1/3)", output, StringComparison.Ordinal);
@@ -220,7 +269,7 @@ public class ConsoleSessionReporterTests
         var reporter = new ConsoleSessionReporter(writer);
         var outcome = new RequestOutcome(1, 1, true, false, 200, TimeSpan.FromMilliseconds(40), null);
 
-        reporter.WriteVerboseRequest(1, 1, 1, 1, """{"foo":"bar"}""", true, outcome);
+        reporter.WriteVerboseRequest(1, 1, 1, 1, """{"foo":"bar"}""", true, LoadMode.GentlePacing, 1, 1, outcome);
 
         Assert.Contains(JsonPayloadFormatter.PrettyPrint("""{"foo":"bar"}"""), writer.ToString(), StringComparison.Ordinal);
     }
@@ -232,7 +281,7 @@ public class ConsoleSessionReporterTests
         var reporter = new ConsoleSessionReporter(writer);
         var outcome = new RequestOutcome(1, 1, true, false, 200, TimeSpan.FromMilliseconds(40), null);
 
-        reporter.WriteVerboseRequest(1, 1, 1, 1, "{}", false, outcome);
+        reporter.WriteVerboseRequest(1, 1, 1, 1, "{}", false, LoadMode.GentlePacing, 1, 1, outcome);
 
         Assert.DoesNotContain("\x1b[", writer.ToString(), StringComparison.Ordinal);
     }
@@ -244,7 +293,7 @@ public class ConsoleSessionReporterTests
         var reporter = new ConsoleSessionReporter(writer);
         var outcome = new RequestOutcome(1, 1, false, false, 500, TimeSpan.FromMilliseconds(40), "HTTP 500 Internal Server Error");
 
-        reporter.WriteVerboseRequest(1, 1, 1, 1, "{}", false, outcome);
+        reporter.WriteVerboseRequest(1, 1, 1, 1, "{}", false, LoadMode.GentlePacing, 1, 1, outcome);
 
         Assert.DoesNotContain("\x1b[", writer.ToString(), StringComparison.Ordinal);
     }
@@ -256,7 +305,7 @@ public class ConsoleSessionReporterTests
         var reporter = new ConsoleSessionReporter(writer);
         var outcome = new RequestOutcome(1, 1, false, false, 500, TimeSpan.FromMilliseconds(40), "HTTP 500 Internal Server Error");
 
-        reporter.WriteVerboseRequest(1, 1, 1, 1, "{}", false, outcome);
+        reporter.WriteVerboseRequest(1, 1, 1, 1, "{}", false, LoadMode.GentlePacing, 1, 1, outcome);
 
         Assert.Contains("Fail: HTTP 500 Internal Server Error", writer.ToString(), StringComparison.Ordinal);
     }
@@ -268,7 +317,7 @@ public class ConsoleSessionReporterTests
         var reporter = new ConsoleSessionReporter(writer);
         var outcome = new RequestOutcome(1, 1, false, false, null, TimeSpan.FromMilliseconds(40), "Connection refused");
 
-        reporter.WriteVerboseRequest(1, 1, 1, 1, "{}", false, outcome);
+        reporter.WriteVerboseRequest(1, 1, 1, 1, "{}", false, LoadMode.GentlePacing, 1, 1, outcome);
 
         Assert.Contains("Fail: Connection refused", writer.ToString(), StringComparison.Ordinal);
     }
@@ -280,7 +329,7 @@ public class ConsoleSessionReporterTests
         var reporter = new ConsoleSessionReporter(writer);
         var outcome = new RequestOutcome(1, 1, false, true, null, TimeSpan.FromMilliseconds(40), "Request was cancelled.");
 
-        reporter.WriteVerboseRequest(1, 1, 1, 1, "{}", false, outcome);
+        reporter.WriteVerboseRequest(1, 1, 1, 1, "{}", false, LoadMode.GentlePacing, 1, 1, outcome);
 
         var output = writer.ToString();
         Assert.Contains("Request 1/1 (cycle 1/1)", output, StringComparison.Ordinal);
@@ -295,7 +344,7 @@ public class ConsoleSessionReporterTests
         var reporter = new ConsoleSessionReporter(writer);
         var outcome = new RequestOutcome(2, 1, true, false, 200, TimeSpan.FromMilliseconds(40), null);
 
-        reporter.WriteVerboseRequest(2, 2, 1, 3, "{}", false, outcome);
+        reporter.WriteVerboseRequest(2, 2, 1, 3, "{}", false, LoadMode.GentlePacing, 4, 6, outcome);
 
         Assert.Contains("Request 1/3 (cycle 2/2)", writer.ToString(), StringComparison.Ordinal);
     }
@@ -308,7 +357,7 @@ public class ConsoleSessionReporterTests
         var outcome = new RequestOutcome(1, 1, true, false, 200, TimeSpan.FromMilliseconds(40), null);
         const string payload = "{\n  \"a\": 1\n}";
 
-        reporter.WriteVerboseRequest(1, 1, 1, 1, payload, true, outcome);
+        reporter.WriteVerboseRequest(1, 1, 1, 1, payload, true, LoadMode.GentlePacing, 1, 1, outcome);
 
         Assert.Contains(JsonPayloadFormatter.PrettyPrint(payload), writer.ToString(), StringComparison.Ordinal);
     }
@@ -320,7 +369,7 @@ public class ConsoleSessionReporterTests
         var reporter = new ConsoleSessionReporter(writer);
         var outcome = new RequestOutcome(1, 1, false, false, null, TimeSpan.FromMilliseconds(40), null);
 
-        reporter.WriteVerboseRequest(1, 1, 1, 1, "{}", false, outcome);
+        reporter.WriteVerboseRequest(1, 1, 1, 1, "{}", false, LoadMode.GentlePacing, 1, 1, outcome);
 
         Assert.DoesNotContain("Fail:", writer.ToString(), StringComparison.Ordinal);
     }
@@ -333,8 +382,8 @@ public class ConsoleSessionReporterTests
         var success = new RequestOutcome(1, 1, true, false, 200, TimeSpan.FromMilliseconds(40), null);
         var failure = new RequestOutcome(1, 2, false, false, 500, TimeSpan.FromMilliseconds(40), "fail");
 
-        reporter.WriteVerboseRequest(1, 1, 1, 2, "{}", false, success);
-        reporter.WriteVerboseRequest(1, 1, 2, 2, """{"a":1}""", false, failure);
+        reporter.WriteVerboseRequest(1, 1, 1, 2, "{}", false, LoadMode.GentlePacing, 1, 2, success);
+        reporter.WriteVerboseRequest(1, 1, 2, 2, """{"a":1}""", false, LoadMode.GentlePacing, 2, 2, failure);
 
         var output = writer.ToString();
         Assert.Contains($"{{}}{Environment.NewLine}OK: 40ms{Environment.NewLine}{Environment.NewLine}Request 2/2", output, StringComparison.Ordinal);

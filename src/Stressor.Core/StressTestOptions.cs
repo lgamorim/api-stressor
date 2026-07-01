@@ -9,4 +9,5 @@ public sealed record StressTestOptions(
     int Cycles,
     string? Auth = null,
     bool Verbose = false,
-    bool PrettyPrint = false);
+    bool PrettyPrint = false,
+    LoadMode Load = LoadMode.GentlePacing);

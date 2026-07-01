@@ -24,7 +24,7 @@ public class StressorAppRunnerTests
     public async Task RunAsync_MissingUrl_ReturnsNonZeroExitCode()
     {
         var exitCode = await new StressorAppRunner(CreateProvider()).RunAsync(
-            ["--payload", "payload.json", "--requests", "1", "--interval", "1s", "--cycles", "1"],
+            ["--payload", "payload.json", "--requests", "1", "--interval", "1s"],
             TestCancellation.Token);
 
         Assert.NotEqual(0, exitCode);
@@ -34,10 +34,23 @@ public class StressorAppRunnerTests
     public async Task RunAsync_MissingPayload_ReturnsNonZeroExitCode()
     {
         var exitCode = await new StressorAppRunner(CreateProvider()).RunAsync(
-            ["--url", "https://example.com", "--requests", "1", "--interval", "1s", "--cycles", "1"],
+            ["--url", "https://example.com", "--requests", "1", "--interval", "1s"],
             TestCancellation.Token);
 
         Assert.NotEqual(0, exitCode);
+    }
+
+    [Fact]
+    public async Task RunAsync_AllRequiredArgsWithoutCycles_ReturnsExitCodeZero()
+    {
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        var options = CreateOptions();
+        var report = new SessionReport(options, [new RequestOutcome(1, 1, true, false, 200, TimeSpan.Zero, null)], false);
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>()).Returns(report);
+
+        var exitCode = await ExecuteWithRunner(stressTestRunner, CreateArgs(cycles: null));
+
+        Assert.Equal(0, exitCode);
     }
 
     [Fact]
@@ -170,6 +183,8 @@ public class StressorAppRunnerTests
             Assert.Contains("--url", output);
             Assert.Contains("Examples:", output);
             Assert.Contains("Exit codes:", output);
+            Assert.Contains("--cycles", output);
+            Assert.Contains("default: 1", output, StringComparison.OrdinalIgnoreCase);
         }
         finally
         {
@@ -337,6 +352,190 @@ public class StressorAppRunnerTests
     }
 
     [Fact]
+    public async Task RunAsync_LoadOmitted_BindsGentlePacing()
+    {
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        await ExecuteWithRunner(stressTestRunner, CreateArgs());
+
+        await stressTestRunner.Received(1).RunAsync(
+            Arg.Is<StressTestOptions>(o => o.Load == LoadMode.GentlePacing),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RunAsync_LoadGentlePacing_BindsGentlePacing()
+    {
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        await ExecuteWithRunner(stressTestRunner, CreateArgs(load: "gentle-pacing"));
+
+        await stressTestRunner.Received(1).RunAsync(
+            Arg.Is<StressTestOptions>(o => o.Load == LoadMode.GentlePacing),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RunAsync_LoadFixedRate_BindsFixedRate()
+    {
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        await ExecuteWithRunner(stressTestRunner, CreateArgs(load: "fixed-rate"));
+
+        await stressTestRunner.Received(1).RunAsync(
+            Arg.Is<StressTestOptions>(o => o.Load == LoadMode.FixedRate),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RunAsync_LoadShortFlag_BindsFixedRate()
+    {
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        var args = CreateArgs();
+        args = [.. args, "-l", "fixed-rate"];
+
+        await ExecuteWithRunner(stressTestRunner, args);
+
+        await stressTestRunner.Received(1).RunAsync(
+            Arg.Is<StressTestOptions>(o => o.Load == LoadMode.FixedRate),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RunAsync_InvalidLoad_ReturnsExitCodeOne()
+    {
+        var exitCode = await ExecuteWithRunner(
+            Substitute.For<IStressTestRunner>(),
+            CreateArgs(load: "burst"));
+
+        Assert.Equal(1, exitCode);
+    }
+
+    [Fact]
+    public async Task RunAsync_CyclesOmitted_UsesOne()
+    {
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        await ExecuteWithRunner(stressTestRunner, CreateArgs(cycles: null));
+
+        await stressTestRunner.Received(1).RunAsync(
+            Arg.Is<StressTestOptions>(o => o.Cycles == 1),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RunAsync_CyclesExplicitOne_BindsOne()
+    {
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        await ExecuteWithRunner(stressTestRunner, CreateArgs(cycles: "1"));
+
+        await stressTestRunner.Received(1).RunAsync(
+            Arg.Is<StressTestOptions>(o => o.Cycles == 1),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RunAsync_CyclesExplicitMultiple_BindsValue()
+    {
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        await ExecuteWithRunner(stressTestRunner, CreateArgs(cycles: "60"));
+
+        await stressTestRunner.Received(1).RunAsync(
+            Arg.Is<StressTestOptions>(o => o.Cycles == 60),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RunAsync_CyclesShortForm_BindsValue()
+    {
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        var args = CreateArgs(cycles: null);
+        args = [.. args, "-c", "5"];
+
+        await ExecuteWithRunner(stressTestRunner, args);
+
+        await stressTestRunner.Received(1).RunAsync(
+            Arg.Is<StressTestOptions>(o => o.Cycles == 5),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RunAsync_CyclesZero_ReturnsExitCodeOne()
+    {
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+
+        var exitCode = await ExecuteWithRunner(stressTestRunner, CreateArgs(cycles: "0"));
+
+        Assert.Equal(1, exitCode);
+        await stressTestRunner.DidNotReceive().RunAsync(
+            Arg.Any<StressTestOptions>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RunAsync_CyclesNegative_ReturnsExitCodeOne()
+    {
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+
+        var exitCode = await ExecuteWithRunner(stressTestRunner, CreateArgs(cycles: "-1"));
+
+        Assert.Equal(1, exitCode);
+        await stressTestRunner.DidNotReceive().RunAsync(
+            Arg.Any<StressTestOptions>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RunAsync_CyclesNonNumeric_ReturnsNonZeroExitCode()
+    {
+        var exitCode = await ExecuteWithRunner(
+            Substitute.For<IStressTestRunner>(),
+            CreateArgs(cycles: "abc"));
+
+        Assert.NotEqual(0, exitCode);
+    }
+
+    [Theory]
+    [InlineData("gentle-pacing", LoadMode.GentlePacing)]
+    [InlineData("GENTLE-PACING", LoadMode.GentlePacing)]
+    [InlineData("fixed-rate", LoadMode.FixedRate)]
+    [InlineData("Fixed-Rate", LoadMode.FixedRate)]
+    public void TryParseLoadMode_ValidValues_ReturnsTrue(string value, LoadMode expected)
+    {
+        Assert.True(StressorAppRunner.TryParseLoadMode(value, out var loadMode));
+        Assert.Equal(expected, loadMode);
+    }
+
+    [Theory]
+    [InlineData("burst")]
+    [InlineData("")]
+    [InlineData("fixed")]
+    public void TryParseLoadMode_InvalidValues_ReturnsFalse(string value)
+    {
+        Assert.False(StressorAppRunner.TryParseLoadMode(value, out _));
+    }
+
+    [Fact]
     public async Task RunAsync_InvalidInterval_ReturnsExitCodeOne()
     {
         var stressTestRunner = Substitute.For<IStressTestRunner>();
@@ -425,16 +624,21 @@ public class StressorAppRunnerTests
         return services.BuildServiceProvider();
     }
 
-    private static string[] CreateArgs(string? method = "POST", string? auth = null, bool verbose = false, bool prettyPrint = false)
+    private static string[] CreateArgs(string? method = "POST", string? auth = null, bool verbose = false, bool prettyPrint = false, string? load = null, string? cycles = null)
     {
         var args = new List<string>
         {
             "--url", "https://example.com",
             "--payload", "payload.json",
             "--requests", "1",
-            "--interval", "1s",
-            "--cycles", "1"
+            "--interval", "1s"
         };
+
+        if (cycles is not null)
+        {
+            args.Add("--cycles");
+            args.Add(cycles);
+        }
 
         if (method is not null)
         {
@@ -456,6 +660,12 @@ public class StressorAppRunnerTests
         if (prettyPrint)
         {
             args.Add("--prettyprint");
+        }
+
+        if (load is not null)
+        {
+            args.Add("--load");
+            args.Add(load);
         }
 
         return [.. args];

@@ -96,8 +96,8 @@ public sealed class StressorAppRunner
         };
         var cyclesOption = new Option<int>("--cycles", "-c")
         {
-            Description = "Number of cycles to execute",
-            Required = true
+            Description = "Number of cycles to execute (default: 1)",
+            DefaultValueFactory = _ => 1
         };
         var authOption = new Option<string?>("--auth", "-a")
         {
@@ -111,6 +111,11 @@ public sealed class StressorAppRunner
         {
             Description = "Print per-request output with indented JSON payloads"
         };
+        var loadOption = new Option<string>("--load", "-l")
+        {
+            Description = "Load handling mode: gentle-pacing (default) or fixed-rate",
+            DefaultValueFactory = _ => "gentle-pacing"
+        };
 
         rootCommand.Options.Add(urlOption);
         rootCommand.Options.Add(payloadOption);
@@ -121,6 +126,7 @@ public sealed class StressorAppRunner
         rootCommand.Options.Add(authOption);
         rootCommand.Options.Add(verboseOption);
         rootCommand.Options.Add(prettyPrintOption);
+        rootCommand.Options.Add(loadOption);
 
         rootCommand.SetAction(async (parseResult, token) =>
         {
@@ -134,6 +140,7 @@ public sealed class StressorAppRunner
                 parseResult.GetValue(authOption),
                 parseResult.GetValue(verboseOption),
                 parseResult.GetValue(prettyPrintOption),
+                parseResult.GetValue(loadOption)!,
                 token).ConfigureAwait(false);
         });
 
@@ -152,6 +159,7 @@ public sealed class StressorAppRunner
         string? auth,
         bool verbose,
         bool prettyPrint,
+        string load,
         CancellationToken cancellationToken,
         IServiceProvider? serviceProviderOverride = null)
     {
@@ -167,6 +175,12 @@ public sealed class StressorAppRunner
             return 1;
         }
 
+        if (!TryParseLoadMode(load, out var loadMode))
+        {
+            await Console.Error.WriteLineAsync("Load must be gentle-pacing or fixed-rate.").ConfigureAwait(false);
+            return 1;
+        }
+
         var options = new StressTestOptions(
             uri,
             payloadPath,
@@ -176,7 +190,8 @@ public sealed class StressorAppRunner
             cycles,
             auth,
             verbose,
-            prettyPrint);
+            prettyPrint,
+            loadMode);
 
         var validationErrors = StressTestOptionsValidator.Validate(options);
         if (validationErrors.Count > 0)
@@ -214,6 +229,7 @@ public sealed class StressorAppRunner
         string? auth,
         bool verbose,
         bool prettyPrint,
+        string load,
         CancellationToken cancellationToken)
     {
         return await ExecuteAsync(
@@ -226,6 +242,7 @@ public sealed class StressorAppRunner
             auth,
             verbose,
             prettyPrint,
+            load,
             cancellationToken,
             serviceProvider).ConfigureAwait(false);
     }
@@ -262,6 +279,24 @@ public sealed class StressorAppRunner
         }
 
         interval = default;
+        return false;
+    }
+
+    internal static bool TryParseLoadMode(string value, out LoadMode loadMode)
+    {
+        if (string.Equals(value, "gentle-pacing", StringComparison.OrdinalIgnoreCase))
+        {
+            loadMode = LoadMode.GentlePacing;
+            return true;
+        }
+
+        if (string.Equals(value, "fixed-rate", StringComparison.OrdinalIgnoreCase))
+        {
+            loadMode = LoadMode.FixedRate;
+            return true;
+        }
+
+        loadMode = default;
         return false;
     }
 }
