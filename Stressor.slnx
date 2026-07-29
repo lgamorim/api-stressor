@@ -1,0 +1,15 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="src/Stressor.App/Stressor.App.csproj" />
+    <Project Path="src/Stressor.Core/Stressor.Core.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/Stressor.App.Tests/Stressor.App.Tests.csproj" />
+    <Project Path="test/Stressor.Core.Tests/Stressor.Core.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -5,6 +5,7 @@ using System.CommandLine.Help;
 using System.CommandLine.Invocation;
 using System.Reflection;
 
+/// <summary>Configures extended help and version output for the CLI.</summary>
 public static class StressorAppHelp
 {
     internal static void Configure(RootCommand rootCommand)
@@ -34,6 +35,7 @@ public static class StressorAppHelp
         return assembly.GetName().Version?.ToString() ?? "unknown";
     }
 
+    /// <summary>Writes the extended usage guide to the given writer.</summary>
     public static void WriteUsageGuide(TextWriter output)
     {
         output.WriteLine();
@@ -95,18 +97,18 @@ public static class StressorAppHelp
 
     private sealed class ExtendedHelpAction : SynchronousCommandLineAction
     {
-        private readonly HelpAction defaultHelp;
+        private readonly HelpAction _defaultHelp;
 
         public ExtendedHelpAction(HelpAction defaultHelp)
         {
-            this.defaultHelp = defaultHelp;
+            _defaultHelp = defaultHelp;
         }
 
         public override bool ClearsParseErrors => true;
 
         public override int Invoke(ParseResult parseResult)
         {
-            var result = defaultHelp.Invoke(parseResult);
+            var result = _defaultHelp.Invoke(parseResult);
             WriteUsageGuide(Console.Out);
             return result;
         }

@@ -26,10 +26,13 @@ jobs:
           cache-dependency-path: '**/*.csproj'
 
       - name: Restore
-        run: dotnet restore Stressor.sln
+        run: dotnet restore Stressor.slnx
+
+      - name: Format check
+        run: dotnet format Stressor.slnx --verify-no-changes
 
       - name: Build
-        run: dotnet build Stressor.sln -c Release --no-restore
+        run: dotnet build Stressor.slnx -c Release --no-restore
 
       - name: Test
-        run: dotnet test Stressor.sln -c Release --no-build --verbosity normal
+        run: dotnet test Stressor.slnx -c Release --no-build --verbosity normal

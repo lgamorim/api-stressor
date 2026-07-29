@@ -5,7 +5,7 @@ using System.Globalization;
 public class ConsoleSessionReporterTests
 {
     [Fact]
-    public void WriteSessionComplete_FullSuccessSession_ContainsUrlMethodAndSucceededCount()
+    public void Should_ContainUrlMethodAndSucceededCount_When_FullSuccessSession()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -33,7 +33,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionComplete_FailuresPresent_ContainsFailedCount()
+    public void Should_ContainFailedCount_When_FailuresPresent()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -50,7 +50,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionComplete_CancelledSession_ContainsCancelledIndicator()
+    public void Should_ContainCancelledIndicator_When_CancelledSession()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -63,7 +63,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionComplete_NoSuccessfulLatencies_PrintsNotApplicable()
+    public void Should_PrintNotApplicable_When_NoSuccessfulLatencies()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -80,7 +80,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionStart_AuthConfigured_ShowsConfiguredIndicator()
+    public void Should_ShowConfiguredIndicator_When_AuthConfigured()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -94,7 +94,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionStart_AuthOmitted_DoesNotShowAuthLine()
+    public void Should_NotShowAuthLine_When_AuthOmitted()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -105,7 +105,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionStart_PrintsIntervalBetweenStarts()
+    public void Should_PrintIntervalBetweenStart_When_WriteSessionStart()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -125,7 +125,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionStart_SubSecondInterval_PrintsMilliseconds()
+    public void Should_PrintMilliseconds_When_SubSecondInterval()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -137,7 +137,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionStart_FractionalSecondInterval_PrintsMilliseconds()
+    public void Should_PrintMilliseconds_When_FractionalSecondInterval()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -149,7 +149,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionStart_PrintsRequestTimeout()
+    public void Should_PrintRequestTimeout_When_WriteSessionStart()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -161,7 +161,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionStart_PrintsDefaultRequestTimeout()
+    public void Should_PrintDefaultRequestTimeout_When_WriteSessionStart()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -172,7 +172,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionStart_PositiveCycleInterval_PrintsCycleGap()
+    public void Should_PrintCycleGap_When_PositiveCycleInterval()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -184,7 +184,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionStart_ZeroCycleInterval_OmitsCycleGap()
+    public void Should_OmitCycleGap_When_ZeroCycleInterval()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -195,7 +195,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionStart_SubSecondCycleInterval_PrintsMilliseconds()
+    public void Should_PrintMilliseconds_When_SubSecondCycleInterval()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -207,7 +207,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionStart_SubSecondRequestTimeout_PrintsMilliseconds()
+    public void Should_PrintMilliseconds_When_SubSecondRequestTimeout()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -219,7 +219,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteCycleSummary_AllFailures_PrintsZeroAverage()
+    public void Should_PrintZeroAverage_When_AllFailures()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -235,7 +235,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteCycleSummary_CancelledExcludedFromFailCount()
+    public void Should_CancelledExcludedFromFailCount_When_WriteCycleSummary()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -252,7 +252,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteCycleSummary_MixedSuccesses_ComputesAverage()
+    public void Should_ComputeAverage_When_MixedSuccesses()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -268,7 +268,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteVerboseRequest_Success_PrintsHeaderPayloadResponseAndStatus()
+    public void Should_PrintHeaderPayloadResponseAndStatus_When_Success()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -284,7 +284,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteVerboseRequest_GetRequest_OmitsRequestBodyLine()
+    public void Should_OmitRequestBodyLine_When_GetRequest()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -298,7 +298,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteVerboseRequest_HttpFailure_PrintsBodiesAndError()
+    public void Should_PrintBodiesAndError_When_HttpFailure()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -322,7 +322,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteVerboseRequest_FailureWithNullErrorMessage_OmitsErrorLine()
+    public void Should_OmitErrorLine_When_FailureWithNullErrorMessage()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -334,7 +334,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteVerboseRequest_NetworkFailure_PrintsExceptionMessage()
+    public void Should_PrintExceptionMessage_When_NetworkFailure()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -346,7 +346,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteVerboseRequest_CancelledRequest_PrintsErrorReason()
+    public void Should_PrintErrorReason_When_CancelledRequest()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -358,7 +358,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteVerboseRequest_Success_DoesNotEmitAnsiColorCodesInTests()
+    public void Should_NotEmitAnsiColorCodesInTests_When_Success()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -370,7 +370,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteVerboseRequest_EmptyResponseBody_OmitsResponseLine()
+    public void Should_OmitResponseLine_When_EmptyResponseBody()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -383,7 +383,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteVerboseRequest_AppendsBlankLineAfterRequest()
+    public void Should_AppendBlankLineAfterRequest_When_WriteVerboseRequest()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -395,7 +395,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionStart_VerboseFailures_PrintsVerboseMode()
+    public void Should_PrintVerboseMode_When_VerboseFailures()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -407,7 +407,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionStart_VerboseOff_OmitsVerboseLine()
+    public void Should_OmitVerboseLine_When_VerboseOff()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -418,7 +418,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionComplete_VerboseOff_NoFailureDigest()
+    public void Should_NoFailureDigest_When_VerboseOff()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -435,7 +435,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionComplete_VerboseFailures_WithFailures_PrintsDigest()
+    public void Should_PrintDigest_When_VerboseFailures_WithFailures()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -456,7 +456,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionComplete_VerboseFull_AllSuccess_NoDigest()
+    public void Should_NoDigest_When_VerboseFull_AllSuccess()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -470,7 +470,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionComplete_VerboseFailures_Cancelled_IncludesInDigest()
+    public void Should_IncludeInDigest_When_VerboseFailures_Cancelled()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -484,7 +484,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionStart_FixedRate_PrintsLoadMode()
+    public void Should_PrintLoadMode_When_FixedRate()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -496,7 +496,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionStart_BatchLoad_PrintsBatchSizeAndWaveInterval()
+    public void Should_PrintBatchSizeAndWaveInterval_When_BatchLoad()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);
@@ -509,7 +509,7 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
-    public void WriteSessionStart_BatchLoad_PrintsLoadMode()
+    public void Should_PrintLoadMode_When_BatchLoad()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var reporter = new ConsoleSessionReporter(writer);

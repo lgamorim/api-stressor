@@ -1,7 +1,6 @@
 namespace Stressor.Core;
 
 using System.Net;
-using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 

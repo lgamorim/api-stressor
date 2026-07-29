@@ -1,0 +1,18 @@
+---
+description: Solo workflow — squash-merge without a PR (single contributor)
+alwaysApply: true
+---
+
+# Workflow — Solo project (PR waived)
+
+Pairs with `workflow-core`. Use when you are the only contributor. Disable
+`workflow-team` in Cursor Settings → Rules.
+
+- A PR adds no review value with no second reviewer. You may squash-merge the
+  `feature/` branch into the default branch yourself without opening one
+  (e.g. `git switch master && git merge --squash feature/x`, then a single
+  commit).
+- The feature-branch and squash steps still stand — only the PR/review step is
+  waived.
+- Disable this rule and enable `workflow-team` the moment a second contributor
+  joins.

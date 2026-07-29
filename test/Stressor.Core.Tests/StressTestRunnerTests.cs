@@ -4,13 +4,13 @@ using NSubstitute;
 
 public class StressTestRunnerTests
 {
-    private readonly IJsonPayloadReader payloadReader = Substitute.For<IJsonPayloadReader>();
-    private readonly IHttpStressTestClient httpClient = Substitute.For<IHttpStressTestClient>();
-    private readonly IConsoleSessionReporter reporter = Substitute.For<IConsoleSessionReporter>();
-    private readonly TestDelayProvider delayProvider = new();
+    private readonly IJsonPayloadReader _payloadReader = Substitute.For<IJsonPayloadReader>();
+    private readonly IHttpStressTestClient _httpClient = Substitute.For<IHttpStressTestClient>();
+    private readonly IConsoleSessionReporter _reporter = Substitute.For<IConsoleSessionReporter>();
+    private readonly RecordingTimeProvider _timeProvider = new();
 
     [Fact]
-    public async Task RunAsync_OneCycleOneRequest_SendsSingleRequest()
+    public async Task Should_SendSingleRequest_When_OneCycleOneRequest()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -19,7 +19,7 @@ public class StressTestRunnerTests
         var report = await runner.RunAsync(options, TestCancellation.Token);
 
         Assert.Equal(1, report.TotalRequests);
-        await httpClient.Received(1).SendAsync(
+        await _httpClient.Received(1).SendAsync(
             options,
             "{}",
             1,
@@ -28,7 +28,7 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_TwoCyclesThreeRequests_SendsSixRequests()
+    public async Task Should_SendSixRequests_When_TwoCyclesThreeRequests()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -37,7 +37,7 @@ public class StressTestRunnerTests
         var report = await runner.RunAsync(options, TestCancellation.Token);
 
         Assert.Equal(6, report.TotalRequests);
-        await httpClient.Received(6).SendAsync(
+        await _httpClient.Received(6).SendAsync(
             Arg.Any<StressTestOptions>(),
             Arg.Any<string>(),
             Arg.Any<int>(),
@@ -46,7 +46,7 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_RatePacing_InvokesExpectedDelays()
+    public async Task Should_InvokeExpectedDelay_When_RatePacing()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -54,13 +54,13 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Equal(2, delayProvider.Delays.Count);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(3000), delayProvider.Delays[0]);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(3000), delayProvider.Delays[1]);
+        Assert.Equal(2, _timeProvider.Delays.Count);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(3000), _timeProvider.Delays[0]);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(3000), _timeProvider.Delays[1]);
     }
 
     [Fact]
-    public async Task RunAsync_MultipleCycles_WaitsIntervalBetweenConsecutiveRequests()
+    public async Task Should_WaitIntervalBetweenConsecutiveRequests_When_MultipleCycles()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -68,17 +68,17 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Single(delayProvider.Delays);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(5000), delayProvider.Delays[0]);
+        Assert.Single(_timeProvider.Delays);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(5000), _timeProvider.Delays[0]);
     }
 
     [Fact]
-    public async Task RunAsync_SlowRequest_SkipsWaitWhenLatencyExceedsInterval()
+    public async Task Should_SkipWaitWhenLatencyExceedInterval_When_SlowRequest()
     {
-        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new[] { "{}" });
 
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -86,7 +86,7 @@ public class StressTestRunnerTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RequestOutcome(1, 1, true, false, 200, TimeSpan.FromSeconds(2), null)));
 
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -99,11 +99,11 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Empty(delayProvider.Delays);
+        Assert.Empty(_timeProvider.Delays);
     }
 
     [Fact]
-    public async Task RunAsync_FirstRequestInSession_NeverDelaysBeforeSend()
+    public async Task Should_NeverDelayBeforeSend_When_FirstRequestInSession()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -111,11 +111,11 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Empty(delayProvider.Delays);
+        Assert.Empty(_timeProvider.Delays);
     }
 
     [Fact]
-    public async Task RunAsync_CancelledBeforeFirstRequest_ReturnsEmptyReport()
+    public async Task Should_ReturnEmptyReport_When_CancelledBeforeFirstRequest()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -126,7 +126,7 @@ public class StressTestRunnerTests
 
         Assert.Empty(report.Outcomes);
         Assert.True(report.WasCancelled);
-        await httpClient.DidNotReceive().SendAsync(
+        await _httpClient.DidNotReceive().SendAsync(
             Arg.Any<StressTestOptions>(),
             Arg.Any<string>(),
             Arg.Any<int>(),
@@ -135,12 +135,12 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_CancelledMidCycle_StopsAfterInFlightRequest()
+    public async Task Should_StopAfterInFlightRequest_When_CancelledMidCycle()
     {
-        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new[] { "{}" });
 
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -148,7 +148,7 @@ public class StressTestRunnerTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RequestOutcome(1, 1, true, false, 200, TimeSpan.Zero, null)));
 
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -166,10 +166,10 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_MixedOutcomes_IncludesAllInReport()
+    public async Task Should_IncludeAllInReport_When_MixedOutcomes()
     {
         ConfigureSuccessfulRequest();
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -186,10 +186,10 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_ClientThrowsOnOneRequest_ContinuesRemainingRequests()
+    public async Task Should_ContinueRemainingRequests_When_ClientThrowOnOneRequest()
     {
         ConfigureSuccessfulRequest();
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -206,16 +206,16 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_SinglePayloadList_SendsSamePayloadEveryRequest()
+    public async Task Should_SendSamePayloadEveryRequest_When_SinglePayloadList()
     {
-        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new[] { "same" });
         ConfigureSuccessfulRequestForAnyPayload();
 
         var runner = CreateRunner();
         await runner.RunAsync(CreateOptions(requests: 3, cycles: 2), TestCancellation.Token);
 
-        await httpClient.Received(6).SendAsync(
+        await _httpClient.Received(6).SendAsync(
             Arg.Any<StressTestOptions>(),
             "same",
             Arg.Any<int>(),
@@ -224,7 +224,7 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_MultiplePayloads_RotatesAndWrapsWithinCycle()
+    public async Task Should_RotateAndWrapsWithinCycle_When_MultiplePayloads()
     {
         ConfigureMultiplePayloads(["a", "b", "c"]);
         var runner = CreateRunner();
@@ -235,7 +235,7 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_MultiplePayloads_ExactCountNoWrap()
+    public async Task Should_ExactCountNoWrap_When_MultiplePayloads()
     {
         ConfigureMultiplePayloads(["a", "b", "c"]);
         var runner = CreateRunner();
@@ -246,7 +246,7 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_MultiplePayloads_PartialCountNoWrap()
+    public async Task Should_PartialCountNoWrap_When_MultiplePayloads()
     {
         ConfigureMultiplePayloads(["a", "b", "c"]);
         var runner = CreateRunner();
@@ -257,7 +257,7 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_MultiplePayloads_OneRequestUsesFirstOnly()
+    public async Task Should_OneRequestUseFirstOnly_When_MultiplePayloads()
     {
         ConfigureMultiplePayloads(["a", "b", "c"]);
         var runner = CreateRunner();
@@ -268,7 +268,7 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_MultiplePayloads_ResetsAtStartOfNextCycle()
+    public async Task Should_ResetAtStartOfNextCycle_When_MultiplePayloads()
     {
         ConfigureMultiplePayloads(["a", "b", "c"]);
         var runner = CreateRunner();
@@ -279,10 +279,10 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_MultiplePayloads_FailureContinuesRotation()
+    public async Task Should_FailureContinueRotation_When_MultiplePayloads()
     {
         ConfigureMultiplePayloads(["a", "b", "c"]);
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -298,11 +298,11 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_MultiplePayloads_CancelledMidCycle_StopsRotation()
+    public async Task Should_StopRotation_When_MultiplePayloads_CancelledMidCycle()
     {
         ConfigureMultiplePayloads(["a", "b", "c"]);
 
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -310,7 +310,7 @@ public class StressTestRunnerTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RequestOutcome(1, 1, true, false, 200, TimeSpan.Zero, null)));
 
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -327,14 +327,14 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_VerboseOff_DoesNotCallWriteVerboseRequest()
+    public async Task Should_NotCallWriteVerboseRequest_When_VerboseOff()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
 
         await runner.RunAsync(CreateOptions(requests: 3, cycles: 1), TestCancellation.Token);
 
-        reporter.DidNotReceive().WriteVerboseRequest(
+        _reporter.DidNotReceive().WriteVerboseRequest(
             Arg.Any<int>(),
             Arg.Any<int>(),
             Arg.Any<int>(),
@@ -348,14 +348,14 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_VerboseFull_CallsWriteVerboseRequestPerRequest()
+    public async Task Should_CallWriteVerboseRequestPerRequest_When_VerboseFull()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
 
         await runner.RunAsync(CreateOptions(requests: 3, cycles: 1, verbose: VerboseMode.Full), TestCancellation.Token);
 
-        reporter.Received(3).WriteVerboseRequest(
+        _reporter.Received(3).WriteVerboseRequest(
             Arg.Any<int>(),
             Arg.Any<int>(),
             Arg.Any<int>(),
@@ -369,14 +369,14 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_VerboseFull_MultipleCycles_CallsForEveryRequest()
+    public async Task Should_CallForEveryRequest_When_VerboseFull_MultipleCycles()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
 
         await runner.RunAsync(CreateOptions(requests: 3, cycles: 2, verbose: VerboseMode.Full), TestCancellation.Token);
 
-        reporter.Received(6).WriteVerboseRequest(
+        _reporter.Received(6).WriteVerboseRequest(
             Arg.Any<int>(),
             Arg.Any<int>(),
             Arg.Any<int>(),
@@ -390,14 +390,14 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_VerboseFull_PassesCorrectPositionPayloadAndIndex()
+    public async Task Should_PassCorrectPositionPayloadAndIndex_When_VerboseFull()
     {
         ConfigureMultiplePayloads(["a", "b", "c"]);
         var runner = CreateRunner();
 
         await runner.RunAsync(CreateOptions(requests: 3, cycles: 2, verbose: VerboseMode.Full), TestCancellation.Token);
 
-        reporter.Received(1).WriteVerboseRequest(
+        _reporter.Received(1).WriteVerboseRequest(
             2,
             2,
             2,
@@ -411,14 +411,14 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_VerboseFailures_AllSuccess_NeverCallsWriteVerboseRequest()
+    public async Task Should_NeverCallWriteVerboseRequest_When_VerboseFailures_AllSuccess()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
 
         await runner.RunAsync(CreateOptions(requests: 3, cycles: 1, verbose: VerboseMode.Failures), TestCancellation.Token);
 
-        reporter.DidNotReceive().WriteVerboseRequest(
+        _reporter.DidNotReceive().WriteVerboseRequest(
             Arg.Any<int>(),
             Arg.Any<int>(),
             Arg.Any<int>(),
@@ -432,10 +432,10 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_VerboseFailures_Mixed_CallsOnlyForFailures()
+    public async Task Should_CallOnlyForFailures_When_VerboseFailures_Mixed()
     {
         ConfigureSuccessfulRequest();
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -447,7 +447,7 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(CreateOptions(requests: 3, cycles: 1, verbose: VerboseMode.Failures), TestCancellation.Token);
 
-        reporter.Received(1).WriteVerboseRequest(
+        _reporter.Received(1).WriteVerboseRequest(
             Arg.Any<int>(),
             Arg.Any<int>(),
             Arg.Is<int>(n => n == 2),
@@ -461,10 +461,10 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_VerboseFull_FailedRequest_PassesOutcomeWithError()
+    public async Task Should_PassOutcomeWithError_When_VerboseFull_FailedRequest()
     {
         ConfigureSuccessfulRequest();
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -476,7 +476,7 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(CreateOptions(requests: 1, cycles: 1, verbose: VerboseMode.Full), TestCancellation.Token);
 
-        reporter.Received(1).WriteVerboseRequest(
+        _reporter.Received(1).WriteVerboseRequest(
             1,
             1,
             1,
@@ -490,7 +490,7 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_VerboseFull_CancelledBeforeFirstRequest_NeverCallsWriteVerboseRequest()
+    public async Task Should_NeverCallWriteVerboseRequest_When_VerboseFull_CancelledBeforeFirstRequest()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -499,7 +499,7 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(CreateOptions(verbose: VerboseMode.Full), cts.Token);
 
-        reporter.DidNotReceive().WriteVerboseRequest(
+        _reporter.DidNotReceive().WriteVerboseRequest(
             Arg.Any<int>(),
             Arg.Any<int>(),
             Arg.Any<int>(),
@@ -513,12 +513,12 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_VerboseFull_CancelledMidCycle_CallsOnlyForCompletedRequests()
+    public async Task Should_CallOnlyForCompletedRequests_When_VerboseFull_CancelledMidCycle()
     {
-        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new[] { "{}" });
 
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -526,7 +526,7 @@ public class StressTestRunnerTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RequestOutcome(1, 1, true, false, 200, TimeSpan.Zero, null)));
 
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -538,7 +538,7 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(CreateOptions(requests: 3, cycles: 1, verbose: VerboseMode.Full), TestCancellation.Token);
 
-        reporter.Received(2).WriteVerboseRequest(
+        _reporter.Received(2).WriteVerboseRequest(
             Arg.Any<int>(),
             Arg.Any<int>(),
             Arg.Any<int>(),
@@ -556,7 +556,7 @@ public class StressTestRunnerTests
     [InlineData(VerboseMode.Full, true, true)]
     [InlineData(VerboseMode.Failures, true, false)]
     [InlineData(VerboseMode.Failures, false, true)]
-    public void ShouldReportVerbose_ReturnsExpectedResult(VerboseMode mode, bool isSuccess, bool expected)
+    public void Should_ReturnExpectedResult_When_ShouldReportVerbose(VerboseMode mode, bool isSuccess, bool expected)
     {
         var outcome = new RequestOutcome(1, 1, isSuccess, false, isSuccess ? 200 : 500, TimeSpan.Zero, isSuccess ? null : "fail");
 
@@ -564,12 +564,12 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_FixedRate_SlowRequest_StillDelaysBetweenStarts()
+    public async Task Should_StillDelayBetweenStart_When_FixedRate_SlowRequest()
     {
-        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new[] { "{}" });
 
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -587,20 +587,20 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Single(delayProvider.Delays);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(1000), delayProvider.Delays[0]);
+        Assert.Single(_timeProvider.Delays);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(1000), _timeProvider.Delays[0]);
     }
 
     [Fact]
-    public async Task RunAsync_FixedRate_OverlappingSend_StartsSecondBeforeFirstCompletes()
+    public async Task Should_StartSecondBeforeFirstComplete_When_FixedRate_OverlappingSend()
     {
-        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new[] { "{}" });
 
         var releaseFirst = new TaskCompletionSource<RequestOutcome>(TaskCreationOptions.RunContinuationsAsynchronously);
         var secondInvoked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -608,7 +608,7 @@ public class StressTestRunnerTests
                 Arg.Any<CancellationToken>())
             .Returns(releaseFirst.Task);
 
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -633,7 +633,7 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_FixedRate_MultipleCycles_SchedulesAcrossCycleBoundary()
+    public async Task Should_ScheduleAcrossCycleBoundary_When_FixedRate_MultipleCycles()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -641,12 +641,12 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Single(delayProvider.Delays);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(5000), delayProvider.Delays[0]);
+        Assert.Single(_timeProvider.Delays);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(5000), _timeProvider.Delays[0]);
     }
 
     [Fact]
-    public async Task RunAsync_FixedRate_CancelledBeforeFirstRequest_ReturnsEmptyReport()
+    public async Task Should_ReturnEmptyReport_When_FixedRate_CancelledBeforeFirstRequest()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -657,7 +657,7 @@ public class StressTestRunnerTests
 
         Assert.Empty(report.Outcomes);
         Assert.True(report.WasCancelled);
-        await httpClient.DidNotReceive().SendAsync(
+        await _httpClient.DidNotReceive().SendAsync(
             Arg.Any<StressTestOptions>(),
             Arg.Any<string>(),
             Arg.Any<int>(),
@@ -666,24 +666,24 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_FixedRate_CancelledMidSchedule_StopsSchedulingRemaining()
+    public async Task Should_StopSchedulingRemaining_When_FixedRate_CancelledMidSchedule()
     {
-        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new[] { "{}" });
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestCancellation.Token);
-        var cancellingDelayProvider = new CancellingAfterFirstDelayProvider(cts);
+        var cancellingTimeProvider = new CancellingAfterFirstDelayTimeProvider(cts);
 
         ConfigureSuccessfulRequestForAnyPayload();
 
-        var runner = new StressTestRunner(payloadReader, httpClient, reporter, cancellingDelayProvider);
+        var runner = new StressTestRunner(_payloadReader, _httpClient, _reporter, cancellingTimeProvider);
         var options = CreateOptions(requests: 3, cycles: 1, load: LoadMode.FixedRate);
 
         var report = await runner.RunAsync(options, cts.Token);
 
         Assert.Equal(2, report.TotalRequests);
         Assert.True(report.WasCancelled);
-        await httpClient.Received(2).SendAsync(
+        await _httpClient.Received(2).SendAsync(
             Arg.Any<StressTestOptions>(),
             Arg.Any<string>(),
             Arg.Any<int>(),
@@ -692,7 +692,7 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_FixedRate_MultiplePayloads_RotatesWithinCycle()
+    public async Task Should_RotateWithinCycle_When_FixedRate_MultiplePayloads()
     {
         ConfigureMultiplePayloads(["a", "b", "c"]);
         var runner = CreateRunner();
@@ -704,10 +704,10 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_FixedRate_MixedOutcomes_IncludesAllInReport()
+    public async Task Should_IncludeAllInReport_When_FixedRate_MixedOutcomes()
     {
         ConfigureSuccessfulRequest();
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -724,10 +724,10 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_FixedRate_ClientThrowsOnOneRequest_ContinuesRemaining()
+    public async Task Should_ContinueRemaining_When_FixedRate_ClientThrowOnOneRequest()
     {
         ConfigureSuccessfulRequest();
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -744,7 +744,7 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_FixedRate_VerboseFull_PassesSessionIndexToReporter()
+    public async Task Should_PassSessionIndexToReporter_When_FixedRate_VerboseFull()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -752,7 +752,7 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        reporter.Received(1).WriteVerboseRequest(
+        _reporter.Received(1).WriteVerboseRequest(
             2,
             2,
             2,
@@ -766,35 +766,35 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_FixedRate_StillWritesCycleSummary()
+    public async Task Should_StillWriteCycleSummary_When_FixedRate()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
 
         await runner.RunAsync(CreateOptions(requests: 2, cycles: 2, load: LoadMode.FixedRate), TestCancellation.Token);
 
-        reporter.Received(2).WriteCycleSummary(
+        _reporter.Received(2).WriteCycleSummary(
             Arg.Any<int>(),
             2,
             Arg.Any<IReadOnlyList<RequestOutcome>>());
     }
 
     [Fact]
-    public async Task RunAsync_VerboseTrue_StillWritesCycleSummary()
+    public async Task Should_StillWriteCycleSummary_When_VerboseTrue()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
 
         await runner.RunAsync(CreateOptions(requests: 2, cycles: 2, verbose: VerboseMode.Full), TestCancellation.Token);
 
-        reporter.Received(2).WriteCycleSummary(
+        _reporter.Received(2).WriteCycleSummary(
             Arg.Any<int>(),
             2,
             Arg.Any<IReadOnlyList<RequestOutcome>>());
     }
 
     [Fact]
-    public async Task RunAsync_InvalidOptions_ThrowsArgumentException()
+    public async Task Should_ThrowArgumentException_When_InvalidOptions()
     {
         var runner = CreateRunner();
         var options = CreateOptions(cycles: 0);
@@ -803,15 +803,15 @@ public class StressTestRunnerTests
             () => runner.RunAsync(options, TestCancellation.Token));
 
         Assert.Contains("Cycles", exception.Message, StringComparison.OrdinalIgnoreCase);
-        await payloadReader.DidNotReceive().ReadAsync(
+        await _payloadReader.DidNotReceive().ReadAsync(
             Arg.Any<string>(),
             Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task RunAsync_PayloadFileNotFound_PropagatesException()
+    public async Task Should_PropagateException_When_PayloadFileNotFound()
     {
-        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns<Task<IReadOnlyList<string>>>(_ => throw new FileNotFoundException("Payload file not found: missing.json", "missing.json"));
 
         var runner = CreateRunner();
@@ -821,9 +821,9 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_InvalidPayload_PropagatesJsonPayloadValidationException()
+    public async Task Should_PropagateJsonPayloadValidationException_When_InvalidPayload()
     {
-        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns<Task<IReadOnlyList<string>>>(_ => throw new JsonPayloadValidationException("Payload file is empty or contains only whitespace."));
 
         var runner = CreateRunner();
@@ -833,7 +833,7 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_Batch_OneCycleOneRequest_SendsSingleRequest()
+    public async Task Should_SendSingleRequest_When_Batch_OneCycleOneRequest()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -842,7 +842,7 @@ public class StressTestRunnerTests
         var report = await runner.RunAsync(options, TestCancellation.Token);
 
         Assert.Equal(1, report.TotalRequests);
-        await httpClient.Received(1).SendAsync(
+        await _httpClient.Received(1).SendAsync(
             options,
             "{}",
             1,
@@ -851,15 +851,15 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_Batch_SingleWave_AllRequestsStartInParallel()
+    public async Task Should_AllRequestsStartInParallel_When_Batch_SingleWave()
     {
-        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new[] { "{}" });
 
         var releaseFirst = new TaskCompletionSource<RequestOutcome>(TaskCreationOptions.RunContinuationsAsynchronously);
         var secondInvoked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -867,7 +867,7 @@ public class StressTestRunnerTests
                 Arg.Any<CancellationToken>())
             .Returns(releaseFirst.Task);
 
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -879,7 +879,7 @@ public class StressTestRunnerTests
                 return Task.FromResult(new RequestOutcome(1, 2, true, false, 200, TimeSpan.Zero, null));
             });
 
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -900,7 +900,7 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_Batch_MultipleWaves_SendsAllRequests()
+    public async Task Should_SendAllRequests_When_Batch_MultipleWaves()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -909,7 +909,7 @@ public class StressTestRunnerTests
         var report = await runner.RunAsync(options, TestCancellation.Token);
 
         Assert.Equal(5, report.TotalRequests);
-        await httpClient.Received(5).SendAsync(
+        await _httpClient.Received(5).SendAsync(
             Arg.Any<StressTestOptions>(),
             Arg.Any<string>(),
             Arg.Any<int>(),
@@ -918,7 +918,7 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_Batch_PartialFinalWave_UsesCorrectPayloadRotation()
+    public async Task Should_UseCorrectPayloadRotation_When_Batch_PartialFinalWave()
     {
         ConfigureMultiplePayloads(["a", "b", "c"]);
         var runner = CreateRunner();
@@ -930,7 +930,7 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_Batch_IntervalBetweenWaveStarts_InvokesExpectedDelays()
+    public async Task Should_InvokeExpectedDelay_When_Batch_IntervalBetweenWaveStart()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -938,13 +938,13 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Equal(2, delayProvider.Delays.Count);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(3000), delayProvider.Delays[0]);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(3000), delayProvider.Delays[1]);
+        Assert.Equal(2, _timeProvider.Delays.Count);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(3000), _timeProvider.Delays[0]);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(3000), _timeProvider.Delays[1]);
     }
 
     [Fact]
-    public async Task RunAsync_Batch_FirstWaveInSession_NeverDelaysBeforeSend()
+    public async Task Should_NeverDelayBeforeSend_When_Batch_FirstWaveInSession()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -952,16 +952,16 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Empty(delayProvider.Delays);
+        Assert.Empty(_timeProvider.Delays);
     }
 
     [Fact]
-    public async Task RunAsync_Batch_SlowWave_SkipsWaitWhenLatencyExceedsInterval()
+    public async Task Should_SkipWaitWhenLatencyExceedInterval_When_Batch_SlowWave()
     {
-        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new[] { "{}" });
 
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -969,7 +969,7 @@ public class StressTestRunnerTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RequestOutcome(1, 1, true, false, 200, TimeSpan.FromSeconds(2), null)));
 
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -982,11 +982,11 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Empty(delayProvider.Delays);
+        Assert.Empty(_timeProvider.Delays);
     }
 
     [Fact]
-    public async Task RunAsync_Batch_MultipleCycles_WaitsIntervalBetweenLastWaveAndNextCycleFirstWave()
+    public async Task Should_WaitIntervalBetweenLastWaveAndNextCycleFirstWave_When_Batch_MultipleCycles()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -994,12 +994,12 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Single(delayProvider.Delays);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(5000), delayProvider.Delays[0]);
+        Assert.Single(_timeProvider.Delays);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(5000), _timeProvider.Delays[0]);
     }
 
     [Fact]
-    public async Task RunAsync_Batch_ZeroInterval_NoDelaysBetweenWaves()
+    public async Task Should_NoDelayBetweenWaves_When_Batch_ZeroInterval()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -1007,11 +1007,11 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Empty(delayProvider.Delays);
+        Assert.Empty(_timeProvider.Delays);
     }
 
     [Fact]
-    public async Task RunAsync_Batch_CancelledBeforeFirstWave_ReturnsEmptyReport()
+    public async Task Should_ReturnEmptyReport_When_Batch_CancelledBeforeFirstWave()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -1022,7 +1022,7 @@ public class StressTestRunnerTests
 
         Assert.Empty(report.Outcomes);
         Assert.True(report.WasCancelled);
-        await httpClient.DidNotReceive().SendAsync(
+        await _httpClient.DidNotReceive().SendAsync(
             Arg.Any<StressTestOptions>(),
             Arg.Any<string>(),
             Arg.Any<int>(),
@@ -1031,17 +1031,17 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_Batch_CancelledMidCycle_StopsSchedulingRemainingWaves()
+    public async Task Should_StopSchedulingRemainingWaves_When_Batch_CancelledMidCycle()
     {
-        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new[] { "{}" });
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestCancellation.Token);
-        var cancellingDelayProvider = new CancellingAfterFirstDelayProvider(cts);
+        var cancellingTimeProvider = new CancellingAfterFirstDelayTimeProvider(cts);
 
         ConfigureSuccessfulRequestForAnyPayload();
 
-        var runner = new StressTestRunner(payloadReader, httpClient, reporter, cancellingDelayProvider);
+        var runner = new StressTestRunner(_payloadReader, _httpClient, _reporter, cancellingTimeProvider);
         var options = CreateOptions(requests: 6, cycles: 1, load: LoadMode.Batch, batch: 2);
 
         var report = await runner.RunAsync(options, cts.Token);
@@ -1051,10 +1051,10 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_Batch_MixedOutcomes_IncludesAllInReport()
+    public async Task Should_IncludeAllInReport_When_Batch_MixedOutcomes()
     {
         ConfigureSuccessfulRequest();
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -1071,7 +1071,7 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_Batch_VerboseFull_PassesSessionIndexToReporter()
+    public async Task Should_PassSessionIndexToReporter_When_Batch_VerboseFull()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -1079,7 +1079,7 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        reporter.Received().WriteVerboseRequest(
+        _reporter.Received().WriteVerboseRequest(
             Arg.Any<int>(),
             Arg.Any<int>(),
             Arg.Any<int>(),
@@ -1093,21 +1093,21 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_Batch_StillWritesCycleSummary()
+    public async Task Should_StillWriteCycleSummary_When_Batch()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
 
         await runner.RunAsync(CreateOptions(requests: 4, cycles: 2, load: LoadMode.Batch, batch: 2), TestCancellation.Token);
 
-        reporter.Received(2).WriteCycleSummary(
+        _reporter.Received(2).WriteCycleSummary(
             Arg.Any<int>(),
             2,
             Arg.Any<IReadOnlyList<RequestOutcome>>());
     }
 
     [Fact]
-    public async Task RunAsync_Batch_InvalidOptions_ThrowsArgumentException()
+    public async Task Should_ThrowArgumentException_When_Batch_InvalidOptions()
     {
         var runner = CreateRunner();
         var options = CreateOptions(requests: 5, load: LoadMode.Batch, batch: 10);
@@ -1119,7 +1119,7 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_GentlePacing_SingleCycleWithCycleInterval_NoCycleGapDelay()
+    public async Task Should_NoCycleGapDelay_When_GentlePacing_SingleCycleWithCycleInterval()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -1127,11 +1127,11 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Empty(delayProvider.Delays);
+        Assert.Empty(_timeProvider.Delays);
     }
 
     [Fact]
-    public async Task RunAsync_GentlePacing_TwoCyclesWithCycleIntervalOnly_WaitsOnceBetweenCycles()
+    public async Task Should_WaitOnceBetweenCycles_When_GentlePacing_TwoCyclesWithCycleIntervalOnly()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -1139,12 +1139,12 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Single(delayProvider.Delays);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(5000), delayProvider.Delays[0]);
+        Assert.Single(_timeProvider.Delays);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(5000), _timeProvider.Delays[0]);
     }
 
     [Fact]
-    public async Task RunAsync_GentlePacing_ThreeCyclesWithCycleIntervalOnly_WaitsBetweenEachCycle()
+    public async Task Should_WaitBetweenEachCycle_When_GentlePacing_ThreeCyclesWithCycleIntervalOnly()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -1152,12 +1152,12 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Equal(2, delayProvider.Delays.Count);
-        Assert.All(delayProvider.Delays, delay => AssertApproximateDelay(TimeSpan.FromMilliseconds(5000), delay));
+        Assert.Equal(2, _timeProvider.Delays.Count);
+        Assert.All(_timeProvider.Delays, delay => AssertApproximateDelay(TimeSpan.FromMilliseconds(5000), delay));
     }
 
     [Fact]
-    public async Task RunAsync_GentlePacing_CycleIntervalReplacesIntervalAtBoundary()
+    public async Task Should_CycleIntervalReplaceIntervalAtBoundary_When_GentlePacing()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -1165,12 +1165,12 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Single(delayProvider.Delays);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(5000), delayProvider.Delays[0]);
+        Assert.Single(_timeProvider.Delays);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(5000), _timeProvider.Delays[0]);
     }
 
     [Fact]
-    public async Task RunAsync_GentlePacing_CycleIntervalStartsNextCycleImmediately()
+    public async Task Should_CycleIntervalStartNextCycleImmediately_When_GentlePacing()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -1178,31 +1178,31 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Equal(3, delayProvider.Delays.Count);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(1000), delayProvider.Delays[0]);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(5000), delayProvider.Delays[1]);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(1000), delayProvider.Delays[2]);
+        Assert.Equal(3, _timeProvider.Delays.Count);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(1000), _timeProvider.Delays[0]);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(5000), _timeProvider.Delays[1]);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(1000), _timeProvider.Delays[2]);
     }
 
     [Fact]
-    public async Task RunAsync_GentlePacing_CancelledDuringCycleGap_StopsBeforeNextCycle()
+    public async Task Should_StopBeforeNextCycle_When_GentlePacing_CancelledDuringCycleGap()
     {
-        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new[] { "{}" });
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestCancellation.Token);
-        var cancellingDelayProvider = new CancellingAfterFirstDelayProvider(cts);
+        var cancellingTimeProvider = new CancellingAfterFirstDelayTimeProvider(cts);
 
         ConfigureSuccessfulRequestForAnyPayload();
 
-        var runner = new StressTestRunner(payloadReader, httpClient, reporter, cancellingDelayProvider);
+        var runner = new StressTestRunner(_payloadReader, _httpClient, _reporter, cancellingTimeProvider);
         var options = CreateOptions(requests: 1, cycles: 2, cycleIntervalMs: 5000);
 
         var report = await runner.RunAsync(options, cts.Token);
 
         Assert.Equal(1, report.TotalRequests);
         Assert.True(report.WasCancelled);
-        await httpClient.Received(1).SendAsync(
+        await _httpClient.Received(1).SendAsync(
             Arg.Any<StressTestOptions>(),
             Arg.Any<string>(),
             Arg.Is<int>(cycle => cycle == 1),
@@ -1211,12 +1211,12 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_GentlePacing_CancelledMidCycle_DoesNotWaitForCycleGap()
+    public async Task Should_NotWaitForCycleGap_When_GentlePacing_CancelledMidCycle()
     {
-        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new[] { "{}" });
 
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -1224,7 +1224,7 @@ public class StressTestRunnerTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RequestOutcome(1, 1, true, false, 200, TimeSpan.Zero, null)));
 
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -1239,12 +1239,12 @@ public class StressTestRunnerTests
 
         Assert.Equal(2, report.TotalRequests);
         Assert.True(report.WasCancelled);
-        Assert.Single(delayProvider.Delays);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(1000), delayProvider.Delays[0]);
+        Assert.Single(_timeProvider.Delays);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(1000), _timeProvider.Delays[0]);
     }
 
     [Fact]
-    public async Task RunAsync_GentlePacing_CycleIntervalWithMultiplePayloads_ResetsAtNextCycle()
+    public async Task Should_ResetAtNextCycle_When_GentlePacing_CycleIntervalWithMultiplePayloads()
     {
         ConfigureMultiplePayloads(["a", "b", "c"]);
         var runner = CreateRunner();
@@ -1253,11 +1253,11 @@ public class StressTestRunnerTests
         await runner.RunAsync(options, TestCancellation.Token);
 
         await AssertPayloadSequenceAsync(["a", "b", "c", "a", "a", "b", "c", "a"]);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(1000), delayProvider.Delays[3]);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(1000), _timeProvider.Delays[3]);
     }
 
     [Fact]
-    public async Task RunAsync_Batch_TwoCyclesWithCycleIntervalOnly_WaitsOnceBetweenCycles()
+    public async Task Should_WaitOnceBetweenCycles_When_Batch_TwoCyclesWithCycleIntervalOnly()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -1265,12 +1265,12 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Single(delayProvider.Delays);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(5000), delayProvider.Delays[0]);
+        Assert.Single(_timeProvider.Delays);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(5000), _timeProvider.Delays[0]);
     }
 
     [Fact]
-    public async Task RunAsync_Batch_PartialFinalWaveWithCycleInterval_WaitsBetweenCycles()
+    public async Task Should_WaitBetweenCycles_When_Batch_PartialFinalWaveWithCycleInterval()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -1278,12 +1278,12 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Equal(5, delayProvider.Delays.Count);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(5000), delayProvider.Delays[2]);
+        Assert.Equal(5, _timeProvider.Delays.Count);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(5000), _timeProvider.Delays[2]);
     }
 
     [Fact]
-    public async Task RunAsync_Batch_CycleIntervalReplacesIntervalAtBoundary()
+    public async Task Should_CycleIntervalReplaceIntervalAtBoundary_When_Batch()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -1291,22 +1291,22 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Single(delayProvider.Delays);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(5000), delayProvider.Delays[0]);
+        Assert.Single(_timeProvider.Delays);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(5000), _timeProvider.Delays[0]);
     }
 
     [Fact]
-    public async Task RunAsync_Batch_CancelledDuringCycleGap_StopsBeforeNextCycle()
+    public async Task Should_StopBeforeNextCycle_When_Batch_CancelledDuringCycleGap()
     {
-        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new[] { "{}" });
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestCancellation.Token);
-        var cancellingDelayProvider = new CancellingAfterFirstDelayProvider(cts);
+        var cancellingTimeProvider = new CancellingAfterFirstDelayTimeProvider(cts);
 
         ConfigureSuccessfulRequestForAnyPayload();
 
-        var runner = new StressTestRunner(payloadReader, httpClient, reporter, cancellingDelayProvider);
+        var runner = new StressTestRunner(_payloadReader, _httpClient, _reporter, cancellingTimeProvider);
         var options = CreateOptions(requests: 1, cycles: 2, load: LoadMode.Batch, batch: 1, cycleIntervalMs: 5000);
 
         var report = await runner.RunAsync(options, cts.Token);
@@ -1316,7 +1316,7 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_FixedRate_TwoCyclesWithCycleInterval_InsertsGapInSchedule()
+    public async Task Should_InsertGapInSchedule_When_FixedRate_TwoCyclesWithCycleInterval()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -1324,14 +1324,14 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Equal(3, delayProvider.Delays.Count);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(1000), delayProvider.Delays[0]);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(6000), delayProvider.Delays[1]);
-        AssertApproximateDelay(TimeSpan.FromMilliseconds(1000), delayProvider.Delays[2]);
+        Assert.Equal(3, _timeProvider.Delays.Count);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(1000), _timeProvider.Delays[0]);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(6000), _timeProvider.Delays[1]);
+        AssertApproximateDelay(TimeSpan.FromMilliseconds(1000), _timeProvider.Delays[2]);
     }
 
     [Fact]
-    public async Task RunAsync_FixedRate_ThreeCyclesWithCycleInterval_InsertsGapBetweenEachCycle()
+    public async Task Should_InsertGapBetweenEachCycle_When_FixedRate_ThreeCyclesWithCycleInterval()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -1339,22 +1339,22 @@ public class StressTestRunnerTests
 
         await runner.RunAsync(options, TestCancellation.Token);
 
-        Assert.Equal(2, delayProvider.Delays.Count);
-        Assert.All(delayProvider.Delays, delay => AssertApproximateDelay(TimeSpan.FromMilliseconds(6000), delay));
+        Assert.Equal(2, _timeProvider.Delays.Count);
+        Assert.All(_timeProvider.Delays, delay => AssertApproximateDelay(TimeSpan.FromMilliseconds(6000), delay));
     }
 
     [Fact]
-    public async Task RunAsync_FixedRate_CancelledDuringCycleGap_StopsBeforeNextCycle()
+    public async Task Should_StopBeforeNextCycle_When_FixedRate_CancelledDuringCycleGap()
     {
-        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new[] { "{}" });
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestCancellation.Token);
-        var cancellingDelayProvider = new CancellingAfterFirstDelayProvider(cts);
+        var cancellingTimeProvider = new CancellingAfterFirstDelayTimeProvider(cts);
 
         ConfigureSuccessfulRequestForAnyPayload();
 
-        var runner = new StressTestRunner(payloadReader, httpClient, reporter, cancellingDelayProvider);
+        var runner = new StressTestRunner(_payloadReader, _httpClient, _reporter, cancellingTimeProvider);
         var options = CreateOptions(requests: 1, cycles: 2, load: LoadMode.FixedRate, cycleIntervalMs: 5000);
 
         var report = await runner.RunAsync(options, cts.Token);
@@ -1364,7 +1364,7 @@ public class StressTestRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_Batch_IsRoutedByLoadSwitch()
+    public async Task Should_RouteByLoadSwitch_When_Batch()
     {
         ConfigureSuccessfulRequest();
         var runner = CreateRunner();
@@ -1376,7 +1376,7 @@ public class StressTestRunnerTests
 
     private void ConfigureSuccessfulRequest()
     {
-        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new[] { "{}" });
 
         ConfigureSuccessfulRequestForAnyPayload();
@@ -1384,7 +1384,7 @@ public class StressTestRunnerTests
 
     private void ConfigureSuccessfulRequestForAnyPayload()
     {
-        httpClient.SendAsync(
+        _httpClient.SendAsync(
                 Arg.Any<StressTestOptions>(),
                 Arg.Any<string>(),
                 Arg.Any<int>(),
@@ -1400,7 +1400,7 @@ public class StressTestRunnerTests
 
     private void ConfigureMultiplePayloads(string[] payloads)
     {
-        payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(payloads);
 
         ConfigureSuccessfulRequestForAnyPayload();
@@ -1408,7 +1408,7 @@ public class StressTestRunnerTests
 
     private async Task AssertPayloadSequenceAsync(string[] expectedPayloads)
     {
-        var receivedCalls = httpClient.ReceivedCalls()
+        var receivedCalls = _httpClient.ReceivedCalls()
             .Where(call => call.GetMethodInfo().Name == nameof(IHttpStressTestClient.SendAsync))
             .Select(call => call.GetArguments()[1] as string)
             .ToList();
@@ -1423,7 +1423,7 @@ public class StressTestRunnerTests
     }
 
     private StressTestRunner CreateRunner() =>
-        new(payloadReader, httpClient, reporter, delayProvider);
+        new(_payloadReader, _httpClient, _reporter, _timeProvider);
 
     private static StressTestOptions CreateOptions(int requests = 1, int cycles = 1, int intervalMs = 1000, VerboseMode verbose = VerboseMode.Off, LoadMode load = LoadMode.GentlePacing, int batch = 1, int cycleIntervalMs = 0) =>
         new(new Uri("https://example.com"), "payload.json", HttpMethod.Post, requests, TimeSpan.FromMilliseconds(intervalMs), cycles, Verbose: verbose, Load: load, Batch: batch)
@@ -1437,27 +1437,4 @@ public class StressTestRunnerTests
         Assert.True(difference < 50, $"Expected delay near {expected}, but was {actual}.");
     }
 
-    private sealed class CancellingAfterFirstDelayProvider : IDelayProvider
-    {
-        private readonly CancellationTokenSource cancellationTokenSource;
-
-        public CancellingAfterFirstDelayProvider(CancellationTokenSource cancellationTokenSource)
-        {
-            this.cancellationTokenSource = cancellationTokenSource;
-        }
-
-        public List<TimeSpan> Delays { get; } = [];
-
-        public Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken = default)
-        {
-            Delays.Add(delay);
-
-            if (Delays.Count == 1)
-            {
-                cancellationTokenSource.Cancel();
-            }
-
-            return Task.CompletedTask;
-        }
-    }
 }

@@ -2,56 +2,61 @@ namespace Stressor.Core;
 
 using System.Globalization;
 
+/// <summary>Writes formatted stress-session output to a <see cref="TextWriter"/>.</summary>
 public sealed class ConsoleSessionReporter : IConsoleSessionReporter
 {
-    private readonly TextWriter output;
+    private readonly TextWriter _output;
 
+    /// <summary>Writes session output to standard output.</summary>
     public ConsoleSessionReporter()
         : this(Console.Out)
     {
     }
 
+    /// <summary>Writes session output to the given writer.</summary>
     public ConsoleSessionReporter(TextWriter output)
     {
-        this.output = output;
+        _output = output;
     }
 
+    /// <inheritdoc />
     public void WriteSessionStart(StressTestOptions options)
     {
         var totalRequests = options.RequestsPerInterval * options.Cycles;
-        output.WriteLine("Stress test starting");
-        output.WriteLine($"  URL:      {options.Url.ToString()}");
-        output.WriteLine($"  Method:   {options.Method.Method}");
+        _output.WriteLine("Stress test starting");
+        _output.WriteLine($"  URL:      {options.Url.ToString()}");
+        _output.WriteLine($"  Method:   {options.Method.Method}");
 
         if (!string.IsNullOrWhiteSpace(options.Auth))
         {
-            output.WriteLine("  Auth:     configured");
+            _output.WriteLine("  Auth:     configured");
         }
 
         if (options.Load == LoadMode.Batch)
         {
-            output.WriteLine($"  Rate:     {options.RequestsPerInterval.ToString(CultureInfo.InvariantCulture)} requests/cycle, batch {options.Batch.ToString(CultureInfo.InvariantCulture)}, {FormatInterval(options.Interval)} between wave starts");
+            _output.WriteLine($"  Rate:     {options.RequestsPerInterval.ToString(CultureInfo.InvariantCulture)} requests/cycle, batch {options.Batch.ToString(CultureInfo.InvariantCulture)}, {FormatInterval(options.Interval)} between wave starts");
         }
         else
         {
-            output.WriteLine($"  Rate:     {options.RequestsPerInterval.ToString(CultureInfo.InvariantCulture)} requests/cycle, {FormatInterval(options.Interval)} between starts");
+            _output.WriteLine($"  Rate:     {options.RequestsPerInterval.ToString(CultureInfo.InvariantCulture)} requests/cycle, {FormatInterval(options.Interval)} between starts");
         }
-        output.WriteLine($"  Load:     {FormatLoadMode(options.Load)}");
-        output.WriteLine($"  Timeout:  {FormatInterval(options.RequestTimeout)}");
+        _output.WriteLine($"  Load:     {FormatLoadMode(options.Load)}");
+        _output.WriteLine($"  Timeout:  {FormatInterval(options.RequestTimeout)}");
         if (options.CycleInterval > TimeSpan.Zero)
         {
-            output.WriteLine($"  Cycle gap: {FormatInterval(options.CycleInterval)}");
+            _output.WriteLine($"  Cycle gap: {FormatInterval(options.CycleInterval)}");
         }
 
         if (options.Verbose != VerboseMode.Off)
         {
-            output.WriteLine($"  Verbose:  {FormatVerboseMode(options.Verbose)}");
+            _output.WriteLine($"  Verbose:  {FormatVerboseMode(options.Verbose)}");
         }
 
-        output.WriteLine($"  Cycles:   {options.Cycles.ToString(CultureInfo.InvariantCulture)} ({totalRequests.ToString(CultureInfo.InvariantCulture)} total requests)");
-        output.WriteLine();
+        _output.WriteLine($"  Cycles:   {options.Cycles.ToString(CultureInfo.InvariantCulture)} ({totalRequests.ToString(CultureInfo.InvariantCulture)} total requests)");
+        _output.WriteLine();
     }
 
+    /// <inheritdoc />
     public void WriteCycleSummary(int cycleNumber, int totalCycles, IReadOnlyList<RequestOutcome> cycleOutcomes)
     {
         var succeeded = cycleOutcomes.Count(o => o.IsSuccess);
@@ -61,10 +66,11 @@ public sealed class ConsoleSessionReporter : IConsoleSessionReporter
             ? 0
             : successfulLatencies.Average(l => l.TotalMilliseconds);
 
-        output.WriteLine(
+        _output.WriteLine(
             $"Cycle {cycleNumber.ToString(CultureInfo.InvariantCulture)}/{totalCycles.ToString(CultureInfo.InvariantCulture)}  OK {succeeded.ToString(CultureInfo.InvariantCulture)}  Fail {failed.ToString(CultureInfo.InvariantCulture)}  Avg {averageMs.ToString("F0", CultureInfo.InvariantCulture)}ms");
     }
 
+    /// <inheritdoc />
     public void WriteVerboseRequest(
         int cycleNumber,
         int totalCycles,
@@ -77,58 +83,61 @@ public sealed class ConsoleSessionReporter : IConsoleSessionReporter
         int payloadCount,
         RequestOutcome outcome)
     {
-        output.WriteLine(
+        _output.WriteLine(
             $"({sessionRequestIndex.ToString(CultureInfo.InvariantCulture)}/{sessionTotalRequests.ToString(CultureInfo.InvariantCulture)}) Request {requestNumber.ToString(CultureInfo.InvariantCulture)}/{requestsPerInterval.ToString(CultureInfo.InvariantCulture)} (cycle {cycleNumber.ToString(CultureInfo.InvariantCulture)}/{totalCycles.ToString(CultureInfo.InvariantCulture)}) payload {payloadIndex.ToString(CultureInfo.InvariantCulture)}/{payloadCount.ToString(CultureInfo.InvariantCulture)}");
 
         if (requestPayload is not null)
         {
-            output.WriteLine(requestPayload);
+            _output.WriteLine(requestPayload);
         }
 
         if (!string.IsNullOrEmpty(outcome.ResponseBody))
         {
-            output.WriteLine(outcome.ResponseBody);
+            _output.WriteLine(outcome.ResponseBody);
         }
 
-        if (outcome.IsSuccess)
+        if (outcome is { IsSuccess: true, StatusCode: int statusCode })
         {
             var latencyMs = outcome.Latency.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture);
-            output.WriteLine($"{ConsoleStyling.FormatSuccessPrefix(output)}HTTP {outcome.StatusCode!.Value.ToString(CultureInfo.InvariantCulture)} {latencyMs}ms");
+            _output.WriteLine($"{ConsoleStyling.FormatSuccessPrefix(_output)}HTTP {statusCode.ToString(CultureInfo.InvariantCulture)} {latencyMs}ms");
         }
         else if (outcome.ErrorMessage is not null)
         {
-            output.WriteLine($"{ConsoleStyling.FormatErrorPrefix(output)}{outcome.ErrorMessage}");
+            _output.WriteLine($"{ConsoleStyling.FormatErrorPrefix(_output)}{outcome.ErrorMessage}");
         }
 
-        output.WriteLine();
+        _output.WriteLine();
     }
 
+    /// <inheritdoc />
     public void WriteSessionComplete(SessionReport report)
     {
-        output.WriteLine();
-        output.WriteLine("Session complete");
+        _output.WriteLine();
+        _output.WriteLine("Session complete");
 
         if (report.WasCancelled)
         {
-            output.WriteLine("  Status:   Cancelled");
+            _output.WriteLine("  Status:   Cancelled");
         }
 
-        output.WriteLine($"  Succeeded: {report.SucceededCount.ToString(CultureInfo.InvariantCulture)}");
-        output.WriteLine($"  Failed:    {report.FailedCount.ToString(CultureInfo.InvariantCulture)}");
+        _output.WriteLine($"  Succeeded: {report.SucceededCount.ToString(CultureInfo.InvariantCulture)}");
+        _output.WriteLine($"  Failed:    {report.FailedCount.ToString(CultureInfo.InvariantCulture)}");
 
         if (report.CancelledCount > 0)
         {
-            output.WriteLine($"  Cancelled: {report.CancelledCount.ToString(CultureInfo.InvariantCulture)}");
+            _output.WriteLine($"  Cancelled: {report.CancelledCount.ToString(CultureInfo.InvariantCulture)}");
         }
 
-        if (report.MinLatency is null)
+        if (report.MinLatency is { } minLatency
+            && report.AverageLatency is { } averageLatency
+            && report.MaxLatency is { } maxLatency)
         {
-            output.WriteLine("  Latency:   N/A");
+            _output.WriteLine(
+                $"  Latency:   min {minLatency.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture)}ms  avg {averageLatency.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture)}ms  max {maxLatency.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture)}ms");
         }
         else
         {
-            output.WriteLine(
-                $"  Latency:   min {report.MinLatency.Value.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture)}ms  avg {report.AverageLatency!.Value.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture)}ms  max {report.MaxLatency!.Value.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture)}ms");
+            _output.WriteLine("  Latency:   N/A");
         }
 
         WriteFailureDigest(report);
@@ -148,8 +157,8 @@ public sealed class ConsoleSessionReporter : IConsoleSessionReporter
         }
 
         var sessionTotalRequests = report.Options.RequestsPerInterval * report.Options.Cycles;
-        output.WriteLine();
-        output.WriteLine($"Failures ({failures.Count.ToString(CultureInfo.InvariantCulture)}):");
+        _output.WriteLine();
+        _output.WriteLine($"Failures ({failures.Count.ToString(CultureInfo.InvariantCulture)}):");
         foreach (var outcome in failures)
         {
             var sessionIndex = (outcome.CycleNumber - 1) * report.Options.RequestsPerInterval + outcome.RequestNumber;
@@ -157,7 +166,7 @@ public sealed class ConsoleSessionReporter : IConsoleSessionReporter
             var latencyPart = outcome.StatusCode is not null || !outcome.IsCancelled
                 ? $" {outcome.Latency.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture)}ms"
                 : string.Empty;
-            output.WriteLine(
+            _output.WriteLine(
                 $"  ({sessionIndex.ToString(CultureInfo.InvariantCulture)}/{sessionTotalRequests.ToString(CultureInfo.InvariantCulture)}) {summary} payload {outcome.PayloadIndex.ToString(CultureInfo.InvariantCulture)}/{outcome.PayloadCount.ToString(CultureInfo.InvariantCulture)}{latencyPart}");
         }
     }

@@ -3,16 +3,19 @@ namespace Stressor.Core;
 using System.Diagnostics;
 using System.Text;
 
+/// <summary>Sends HTTP requests for stress testing via a named <see cref="IHttpClientFactory"/> client.</summary>
 public sealed class HttpStressTestClient : IHttpStressTestClient
 {
     private const string ClientName = "stressor";
-    private readonly IHttpClientFactory httpClientFactory;
+    private readonly IHttpClientFactory _httpClientFactory;
 
+    /// <summary>Creates a client that resolves HTTP clients from the given factory.</summary>
     public HttpStressTestClient(IHttpClientFactory httpClientFactory)
     {
-        this.httpClientFactory = httpClientFactory;
+        _httpClientFactory = httpClientFactory;
     }
 
+    /// <inheritdoc />
     public async Task<RequestOutcome> SendAsync(
         StressTestOptions options,
         string payload,
@@ -25,7 +28,7 @@ public sealed class HttpStressTestClient : IHttpStressTestClient
         try
         {
             using var request = CreateRequest(options, payload);
-            var client = httpClientFactory.CreateClient(ClientName);
+            var client = _httpClientFactory.CreateClient(ClientName);
             using var requestCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             requestCts.CancelAfter(options.RequestTimeout);
             using var response = await client.SendAsync(request, requestCts.Token).ConfigureAwait(false);

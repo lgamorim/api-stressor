@@ -1,5 +1,6 @@
 namespace Stressor.Core;
 
+/// <summary>Validates <see cref="StressTestOptions"/> before a session starts.</summary>
 public static class StressTestOptionsValidator
 {
     private static readonly HashSet<string> AllowedMethods = new(StringComparer.OrdinalIgnoreCase)
@@ -13,6 +14,7 @@ public static class StressTestOptionsValidator
         HttpMethod.Options.Method
     };
 
+    /// <summary>Returns validation errors for the given options, or an empty list when valid.</summary>
     public static IReadOnlyList<string> Validate(StressTestOptions options)
     {
         var errors = new List<string>();

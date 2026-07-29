@@ -6,7 +6,7 @@ public class SessionReportTests
         new(new Uri("https://example.com"), "payload.json", HttpMethod.Post, 1, TimeSpan.FromSeconds(1), 1);
 
     [Fact]
-    public void EmptyOutcomeList_HasZeroCounts()
+    public void Should_HaveZeroCounts_When_EmptyOutcomeList()
     {
         var report = new SessionReport(CreateOptions(), [], false);
 
@@ -20,7 +20,7 @@ public class SessionReportTests
     }
 
     [Fact]
-    public void AllSuccesses_ComputesLatencyStats()
+    public void Should_ComputeLatencyStats_When_AllSuccesses()
     {
         var outcomes = new[]
         {
@@ -38,7 +38,7 @@ public class SessionReportTests
     }
 
     [Fact]
-    public void SingleSuccess_MinEqualsAvgEqualsMax()
+    public void Should_MinEqualsAvgEqualsMax_When_SingleSuccess()
     {
         var outcomes = new[]
         {
@@ -52,7 +52,7 @@ public class SessionReportTests
     }
 
     [Fact]
-    public void NoSuccesses_LatencyStatsAreNull()
+    public void Should_HaveNullLatencyStats_When_NoSuccesses()
     {
         var outcomes = new[]
         {

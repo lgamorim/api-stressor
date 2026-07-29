@@ -2,129 +2,129 @@ namespace Stressor.Core.Tests;
 
 public class JsonPayloadReaderTests
 {
-    private readonly JsonPayloadReader reader = new();
+    private readonly JsonPayloadReader _reader = new();
 
     [Fact]
-    public async Task ReadAsync_ValidJsonObject_ReturnsSingleItemList()
+    public async Task Should_ReturnSingleItemList_When_ValidJsonObject()
     {
         var path = await WriteTempFileAsync("{\"name\":\"test\"}");
 
-        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
+        var payloads = await _reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal("{\"name\":\"test\"}", payloads[0]);
     }
 
     [Fact]
-    public async Task ReadAsync_ValidJsonArray_ReturnsSingleItemList()
+    public async Task Should_ReturnSingleItemList_When_ValidJsonArray()
     {
         var path = await WriteTempFileAsync("[1,2,3]");
 
-        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
+        var payloads = await _reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal("[1,2,3]", payloads[0]);
     }
 
     [Fact]
-    public async Task ReadAsync_ValidNestedJson_ReturnsSingleItemList()
+    public async Task Should_ReturnSingleItemList_When_ValidNestedJson()
     {
         var json = "{\"items\":[{\"id\":1},{\"id\":2}],\"meta\":{\"count\":2}}";
         var path = await WriteTempFileAsync(json);
 
-        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
+        var payloads = await _reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal(json, payloads[0]);
     }
 
     [Fact]
-    public async Task ReadAsync_RootStringPrimitive_ReturnsSingleItemList()
+    public async Task Should_ReturnSingleItemList_When_RootStringPrimitive()
     {
         var path = await WriteTempFileAsync("\"hello\"");
 
-        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
+        var payloads = await _reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal("\"hello\"", payloads[0]);
     }
 
     [Fact]
-    public async Task ReadAsync_RootNull_ReturnsSingleItemList()
+    public async Task Should_ReturnSingleItemList_When_RootNull()
     {
         var path = await WriteTempFileAsync("null");
 
-        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
+        var payloads = await _reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal("null", payloads[0]);
     }
 
     [Fact]
-    public async Task ReadAsync_EmptyObject_ReturnsSingleItemList()
+    public async Task Should_ReturnSingleItemList_When_EmptyObject()
     {
         var path = await WriteTempFileAsync("{}");
 
-        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
+        var payloads = await _reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal("{}", payloads[0]);
     }
 
     [Fact]
-    public async Task ReadAsync_ObjectWithPayloadsAndOtherFields_ReturnsSingleItemList()
+    public async Task Should_ReturnSingleItemList_When_ObjectWithPayloadsAndOtherFields()
     {
         var json = "{\"orderId\":1,\"payloads\":[1,2]}";
         var path = await WriteTempFileAsync(json);
 
-        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
+        var payloads = await _reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal(json, payloads[0]);
     }
 
     [Fact]
-    public async Task ReadAsync_WrongCasePayloadsKey_ReturnsSingleItemList()
+    public async Task Should_ReturnSingleItemList_When_WrongCasePayloadsKey()
     {
         var json = "{\"Payloads\":[{\"id\":1}]}";
         var path = await WriteTempFileAsync(json);
 
-        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
+        var payloads = await _reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal(json, payloads[0]);
     }
 
     [Fact]
-    public async Task ReadAsync_TwoRootPropertiesIncludingPayloads_ReturnsSingleItemList()
+    public async Task Should_ReturnSingleItemList_When_TwoRootPropertiesIncludingPayloads()
     {
         var json = "{\"payloads\":[{\"id\":1}],\"extra\":1}";
         var path = await WriteTempFileAsync(json);
 
-        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
+        var payloads = await _reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal(json, payloads[0]);
     }
 
     [Fact]
-    public async Task ReadAsync_PreservesWhitespace_ReturnsSingleItemList()
+    public async Task Should_ReturnSingleItemList_When_PreserveWhitespace()
     {
         var json = "{\n  \"name\": \"test\"\n}";
         var path = await WriteTempFileAsync(json);
 
-        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
+        var payloads = await _reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal(json, payloads[0]);
     }
 
     [Fact]
-    public async Task ReadAsync_EnvelopeWithObjects_ReturnsSeparatePayloads()
+    public async Task Should_ReturnSeparatePayloads_When_EnvelopeWithObjects()
     {
         var path = await WriteTempFileAsync("{\"payloads\":[{\"id\":1},{\"id\":2}]}");
 
-        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
+        var payloads = await _reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Equal(2, payloads.Count);
         Assert.Equal("{\"id\":1}", payloads[0]);
@@ -132,22 +132,22 @@ public class JsonPayloadReaderTests
     }
 
     [Fact]
-    public async Task ReadAsync_EnvelopeWithSingleItem_ReturnsOneItemList()
+    public async Task Should_ReturnOneItemList_When_EnvelopeWithSingleItem()
     {
         var path = await WriteTempFileAsync("{\"payloads\":[{\"id\":1}]}");
 
-        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
+        var payloads = await _reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal("{\"id\":1}", payloads[0]);
     }
 
     [Fact]
-    public async Task ReadAsync_EnvelopeWithMixedElements_ReturnsEachRawText()
+    public async Task Should_ReturnEachRawText_When_EnvelopeWithMixedElements()
     {
         var path = await WriteTempFileAsync("{\"payloads\":[{\"id\":1},[1,2],\"text\",42,null]}");
 
-        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
+        var payloads = await _reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Equal(5, payloads.Count);
         Assert.Equal("{\"id\":1}", payloads[0]);
@@ -158,83 +158,83 @@ public class JsonPayloadReaderTests
     }
 
     [Fact]
-    public async Task ReadAsync_EnvelopeWithNestedArrayElement_ReturnsElementRawText()
+    public async Task Should_ReturnElementRawText_When_EnvelopeWithNestedArrayElement()
     {
         var path = await WriteTempFileAsync("{\"payloads\":[[1,2]]}");
 
-        var payloads = await reader.ReadAsync(path, TestCancellation.Token);
+        var payloads = await _reader.ReadAsync(path, TestCancellation.Token);
 
         Assert.Single(payloads);
         Assert.Equal("[1,2]", payloads[0]);
     }
 
     [Fact]
-    public async Task ReadAsync_FileNotFound_ThrowsFileNotFoundException()
+    public async Task Should_ThrowFileNotFoundException_When_FileNotFound()
     {
         await Assert.ThrowsAsync<FileNotFoundException>(() =>
-            reader.ReadAsync(Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json"), TestCancellation.Token));
+            _reader.ReadAsync(Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json"), TestCancellation.Token));
     }
 
     [Fact]
-    public async Task ReadAsync_InvalidJson_ThrowsJsonPayloadValidationException()
+    public async Task Should_ThrowJsonPayloadValidationException_When_InvalidJson()
     {
         var path = await WriteTempFileAsync("{ invalid }");
 
-        await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path, TestCancellation.Token));
+        await Assert.ThrowsAsync<JsonPayloadValidationException>(() => _reader.ReadAsync(path, TestCancellation.Token));
     }
 
     [Fact]
-    public async Task ReadAsync_EmptyFile_ThrowsJsonPayloadValidationException()
+    public async Task Should_ThrowJsonPayloadValidationException_When_EmptyFile()
     {
         var path = await WriteTempFileAsync(string.Empty);
 
-        await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path, TestCancellation.Token));
+        await Assert.ThrowsAsync<JsonPayloadValidationException>(() => _reader.ReadAsync(path, TestCancellation.Token));
     }
 
     [Fact]
-    public async Task ReadAsync_WhitespaceOnlyFile_ThrowsJsonPayloadValidationException()
+    public async Task Should_ThrowJsonPayloadValidationException_When_WhitespaceOnlyFile()
     {
         var path = await WriteTempFileAsync("   \t\n  ");
 
-        await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path, TestCancellation.Token));
+        await Assert.ThrowsAsync<JsonPayloadValidationException>(() => _reader.ReadAsync(path, TestCancellation.Token));
     }
 
     [Fact]
-    public async Task ReadAsync_EmptyPayloadsArray_Throws()
+    public async Task Should_Throw_When_EmptyPayloadsArray()
     {
         var path = await WriteTempFileAsync("{\"payloads\":[]}");
 
-        var exception = await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path, TestCancellation.Token));
+        var exception = await Assert.ThrowsAsync<JsonPayloadValidationException>(() => _reader.ReadAsync(path, TestCancellation.Token));
 
         Assert.Equal("Payload array is empty.", exception.Message);
     }
 
     [Fact]
-    public async Task ReadAsync_PayloadsNull_Throws()
+    public async Task Should_Throw_When_PayloadsNull()
     {
         var path = await WriteTempFileAsync("{\"payloads\":null}");
 
-        var exception = await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path, TestCancellation.Token));
+        var exception = await Assert.ThrowsAsync<JsonPayloadValidationException>(() => _reader.ReadAsync(path, TestCancellation.Token));
 
         Assert.Equal("The payloads property must be a JSON array.", exception.Message);
     }
 
     [Fact]
-    public async Task ReadAsync_PayloadsNotArray_Throws()
+    public async Task Should_Throw_When_PayloadsNotArray()
     {
         var path = await WriteTempFileAsync("{\"payloads\":\"text\"}");
 
-        var exception = await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path, TestCancellation.Token));
+        var exception = await Assert.ThrowsAsync<JsonPayloadValidationException>(() => _reader.ReadAsync(path, TestCancellation.Token));
 
         Assert.Equal("The payloads property must be a JSON array.", exception.Message);
     }
 
     [Fact]
-    public async Task ReadAsync_PayloadsObject_Throws()
+    public async Task Should_Throw_When_PayloadsObject()
     {
         var path = await WriteTempFileAsync("{\"payloads\":{}}");
 
-        var exception = await Assert.ThrowsAsync<JsonPayloadValidationException>(() => reader.ReadAsync(path, TestCancellation.Token));
+        var exception = await Assert.ThrowsAsync<JsonPayloadValidationException>(() => _reader.ReadAsync(path, TestCancellation.Token));
 
         Assert.Equal("The payloads property must be a JSON array.", exception.Message);
     }

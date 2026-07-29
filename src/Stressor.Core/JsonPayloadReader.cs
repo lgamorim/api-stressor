@@ -2,8 +2,10 @@ namespace Stressor.Core;
 
 using System.Text.Json;
 
+/// <summary>Reads JSON payload files from disk.</summary>
 public sealed class JsonPayloadReader : IJsonPayloadReader
 {
+    /// <inheritdoc />
     public async Task<IReadOnlyList<string>> ReadAsync(string filePath, CancellationToken cancellationToken = default)
     {
         if (!File.Exists(filePath))

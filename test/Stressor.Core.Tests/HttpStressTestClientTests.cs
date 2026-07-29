@@ -10,7 +10,7 @@ public class HttpStressTestClientTests
     [InlineData("POST")]
     [InlineData("PUT")]
     [InlineData("PATCH")]
-    public async Task SendAsync_BodyBearingMethods_SendsJsonBody(string methodName)
+    public async Task Should_SendJsonBody_When_BodyBearingMethods(string methodName)
     {
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
         var client = CreateClient(handler);
@@ -21,7 +21,8 @@ public class HttpStressTestClientTests
         Assert.True(outcome.IsSuccess);
         var request = Assert.Single(handler.Requests);
         Assert.NotNull(request.Content);
-        Assert.Equal("application/json", request.Content!.Headers.ContentType!.MediaType);
+        Assert.NotNull(request.Content.Headers.ContentType);
+        Assert.Equal("application/json", request.Content.Headers.ContentType.MediaType);
         Assert.Equal("{\"a\":1}", Assert.Single(handler.RequestBodies));
         Assert.Equal(options.Url, request.RequestUri);
         Assert.Equal(methodName, request.Method.Method);
@@ -32,7 +33,7 @@ public class HttpStressTestClientTests
     [InlineData("HEAD")]
     [InlineData("DELETE")]
     [InlineData("OPTIONS")]
-    public async Task SendAsync_NonBodyMethods_DoesNotAttachBody(string methodName)
+    public async Task Should_NotAttachBody_When_NonBodyMethods(string methodName)
     {
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
         var client = CreateClient(handler);
@@ -45,7 +46,7 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
-    public async Task SendAsync_SuccessResponse_RecordsLatencyAndStatusCode()
+    public async Task Should_RecordLatencyAndStatusCode_When_SuccessResponse()
     {
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
         var client = CreateClient(handler);
@@ -59,7 +60,7 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
-    public async Task SendAsync_ErrorStatusCode_IncludesResponseBodySummary()
+    public async Task Should_IncludeResponseBodySummary_When_ErrorStatusCode()
     {
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)
         {
@@ -76,7 +77,7 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
-    public async Task SendAsync_ErrorStatusCode_MarksFailure()
+    public async Task Should_MarkFailure_When_ErrorStatusCode()
     {
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
         var client = CreateClient(handler);
@@ -89,7 +90,7 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
-    public async Task SendAsync_HttpRequestException_RecordsFailureMessage()
+    public async Task Should_RecordFailureMessage_When_HttpRequestException()
     {
         var handler = new StubHttpMessageHandler(_ => throw new HttpRequestException("network down"));
         var client = CreateClient(handler);
@@ -101,7 +102,7 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
-    public async Task SendAsync_HttpRequestException_UnwrapsInnerExceptionMessage()
+    public async Task Should_UnwrapInnerExceptionMessage_When_HttpRequestException()
     {
         var handler = new StubHttpMessageHandler(_ => throw new HttpRequestException(
             "No connection could be made",
@@ -116,7 +117,7 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
-    public async Task SendAsync_TaskCanceledException_RecordsTimeoutMessage()
+    public async Task Should_RecordTimeoutMessage_When_TaskCanceledException()
     {
         var handler = new StubHttpMessageHandler(_ => throw new TaskCanceledException());
         var client = CreateClient(handler);
@@ -129,7 +130,7 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
-    public async Task SendAsync_CancellationToken_RecordsCancellationOutcome()
+    public async Task Should_RecordCancellationOutcome_When_CancellationToken()
     {
         var handler = new StubHttpMessageHandler(_ => throw new OperationCanceledException());
         var client = CreateClient(handler);
@@ -142,7 +143,7 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
-    public async Task SendAsync_AuthProvided_SendsAuthorizationHeader()
+    public async Task Should_SendAuthorizationHeader_When_AuthProvided()
     {
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
         var client = CreateClient(handler);
@@ -155,7 +156,7 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
-    public async Task SendAsync_AuthOmitted_DoesNotSendAuthorizationHeader()
+    public async Task Should_NotSendAuthorizationHeader_When_AuthOmitted()
     {
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
         var client = CreateClient(handler);
@@ -167,7 +168,7 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
-    public async Task SendAsync_ExceedsRequestTimeout_RecordsTimeoutMessage()
+    public async Task Should_RecordTimeoutMessage_When_ExceedRequestTimeout()
     {
         var handler = new DelayingHttpMessageHandler();
         var client = CreateClient(handler);
@@ -181,7 +182,7 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
-    public async Task SendAsync_CompletesWithinTimeout_ReturnsSuccess()
+    public async Task Should_ReturnSuccess_When_CompleteWithinTimeout()
     {
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
         var client = CreateClient(handler);
@@ -195,7 +196,7 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
-    public async Task SendAsync_SessionCancelledDuringSlowRequest_RecordsCancellationNotTimeout()
+    public async Task Should_RecordCancellationNotTimeout_When_SessionCancelledDuringSlowRequest()
     {
         var handler = new DelayingHttpMessageHandler();
         var client = CreateClient(handler);
@@ -212,7 +213,7 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
-    public async Task SendAsync_Success_VerboseOff_DoesNotCaptureResponseBody()
+    public async Task Should_NotCaptureResponseBody_When_Success_VerboseOff()
     {
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
@@ -226,7 +227,7 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
-    public async Task SendAsync_Success_VerboseFull_CapturesResponseBody()
+    public async Task Should_CaptureResponseBody_When_Success_VerboseFull()
     {
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
@@ -241,7 +242,7 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
-    public async Task SendAsync_Success_VerboseFailures_DoesNotCaptureResponseBody()
+    public async Task Should_NotCaptureResponseBody_When_Success_VerboseFailures()
     {
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
@@ -256,7 +257,7 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
-    public async Task SendAsync_Error_VerboseFailures_CapturesResponseBody()
+    public async Task Should_CaptureResponseBody_When_Error_VerboseFailures()
     {
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)
         {
@@ -272,7 +273,7 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
-    public async Task SendAsync_Error_VerboseOff_DoesNotCaptureResponseBody()
+    public async Task Should_NotCaptureResponseBody_When_Error_VerboseOff()
     {
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)
         {
@@ -287,7 +288,7 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
-    public async Task SendAsync_Success_VerboseFull_LargeBody_TruncatesResponseBody()
+    public async Task Should_TruncateResponseBody_When_Success_VerboseFull_LargeBody()
     {
         var body = $"{{\"data\":\"{new string('x', BodyTruncator.MaxBodyLength + 100)}\"}}";
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
@@ -304,7 +305,7 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
-    public async Task SendAsync_NetworkError_VerboseFailures_DoesNotCaptureResponseBody()
+    public async Task Should_NotCaptureResponseBody_When_NetworkError_VerboseFailures()
     {
         var handler = new StubHttpMessageHandler(_ => throw new HttpRequestException("network down"));
         var client = CreateClient(handler);
@@ -316,7 +317,7 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
-    public async Task SendAsync_EmptyBody_VerboseFull_ReturnsNullResponseBody()
+    public async Task Should_ReturnNullResponseBody_When_EmptyBody_VerboseFull()
     {
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
@@ -352,11 +353,13 @@ public class HttpStressTestClientTests
 
     private sealed class DelayingHttpMessageHandler : HttpMessageHandler
     {
+        private static readonly TaskCompletionSource NeverCompletes = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
+            await NeverCompletes.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
             return new HttpResponseMessage(HttpStatusCode.OK);
         }
     }

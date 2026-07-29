@@ -1,24 +1,27 @@
 namespace Stressor.Core;
 
+/// <summary>Executes stress-test sessions using configured load modes and pacing.</summary>
 public sealed class StressTestRunner : IStressTestRunner
 {
-    private readonly IJsonPayloadReader payloadReader;
-    private readonly IHttpStressTestClient httpClient;
-    private readonly IConsoleSessionReporter reporter;
-    private readonly IDelayProvider delayProvider;
+    private readonly IJsonPayloadReader _payloadReader;
+    private readonly IHttpStressTestClient _httpClient;
+    private readonly IConsoleSessionReporter _reporter;
+    private readonly TimeProvider _timeProvider;
 
+    /// <summary>Creates a runner with the given collaborators.</summary>
     public StressTestRunner(
         IJsonPayloadReader payloadReader,
         IHttpStressTestClient httpClient,
         IConsoleSessionReporter reporter,
-        IDelayProvider delayProvider)
+        TimeProvider timeProvider)
     {
-        this.payloadReader = payloadReader;
-        this.httpClient = httpClient;
-        this.reporter = reporter;
-        this.delayProvider = delayProvider;
+        _payloadReader = payloadReader;
+        _httpClient = httpClient;
+        _reporter = reporter;
+        _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc />
     public async Task<SessionReport> RunAsync(StressTestOptions options, CancellationToken cancellationToken = default)
     {
         var validationErrors = StressTestOptionsValidator.Validate(options);
@@ -27,7 +30,7 @@ public sealed class StressTestRunner : IStressTestRunner
             throw new ArgumentException(string.Join(" ", validationErrors));
         }
 
-        var payloads = await payloadReader.ReadAsync(options.PayloadFilePath, cancellationToken).ConfigureAwait(false);
+        var payloads = await _payloadReader.ReadAsync(options.PayloadFilePath, cancellationToken).ConfigureAwait(false);
 
         return options.Load switch
         {
@@ -47,7 +50,7 @@ public sealed class StressTestRunner : IStressTestRunner
         var wasCancelled = false;
         var sessionTotalRequests = options.RequestsPerInterval * options.Cycles;
 
-        reporter.WriteSessionStart(options);
+        _reporter.WriteSessionStart(options);
 
         var elapsed = TimeSpan.Zero;
         TimeSpan? nextRequestStart = null;
@@ -69,7 +72,7 @@ public sealed class StressTestRunner : IStressTestRunner
                     var waitTime = nextRequestStart.Value - elapsed;
                     if (waitTime > TimeSpan.Zero)
                     {
-                        await delayProvider.DelayAsync(waitTime, cancellationToken).ConfigureAwait(false);
+                        await Task.Delay(waitTime, _timeProvider, cancellationToken).ConfigureAwait(false);
                         elapsed += waitTime;
                     }
                 }
@@ -79,7 +82,7 @@ public sealed class StressTestRunner : IStressTestRunner
                 var requestStart = elapsed;
                 var sessionRequestIndex = (cycle - 1) * options.RequestsPerInterval + request;
 
-                var outcome = await httpClient.SendAsync(
+                var outcome = await _httpClient.SendAsync(
                     options,
                     payload,
                     cycle,
@@ -115,7 +118,7 @@ public sealed class StressTestRunner : IStressTestRunner
                 }
             }
 
-            reporter.WriteCycleSummary(cycle, options.Cycles, cycleOutcomes);
+            _reporter.WriteCycleSummary(cycle, options.Cycles, cycleOutcomes);
 
             if (!wasCancelled && cycle < options.Cycles && options.CycleInterval > TimeSpan.Zero)
             {
@@ -125,7 +128,7 @@ public sealed class StressTestRunner : IStressTestRunner
                     break;
                 }
 
-                await delayProvider.DelayAsync(options.CycleInterval, cancellationToken).ConfigureAwait(false);
+                await Task.Delay(options.CycleInterval, _timeProvider, cancellationToken).ConfigureAwait(false);
                 elapsed += options.CycleInterval;
                 nextRequestStart = null;
             }
@@ -143,7 +146,7 @@ public sealed class StressTestRunner : IStressTestRunner
         }
 
         var report = new SessionReport(options, outcomes, wasCancelled);
-        reporter.WriteSessionComplete(report);
+        _reporter.WriteSessionComplete(report);
         return report;
     }
 
@@ -163,7 +166,7 @@ public sealed class StressTestRunner : IStressTestRunner
         var wasCancelled = false;
         var elapsed = TimeSpan.Zero;
 
-        reporter.WriteSessionStart(options);
+        _reporter.WriteSessionStart(options);
 
         for (var k = 0; k < totalRequests && !cancellationToken.IsCancellationRequested; k++)
         {
@@ -175,7 +178,7 @@ public sealed class StressTestRunner : IStressTestRunner
             var waitTime = scheduledAt - elapsed;
             if (waitTime > TimeSpan.Zero)
             {
-                await delayProvider.DelayAsync(waitTime, cancellationToken).ConfigureAwait(false);
+                await Task.Delay(waitTime, _timeProvider, cancellationToken).ConfigureAwait(false);
                 elapsed += waitTime;
             }
             else
@@ -222,7 +225,7 @@ public sealed class StressTestRunner : IStressTestRunner
                 wasCancelled = true;
             }
 
-            reporter.WriteCycleSummary(cycle, options.Cycles, cycleOutcomes);
+            _reporter.WriteCycleSummary(cycle, options.Cycles, cycleOutcomes);
         }
 
         if (cancellationToken.IsCancellationRequested)
@@ -231,7 +234,7 @@ public sealed class StressTestRunner : IStressTestRunner
         }
 
         var report = new SessionReport(options, outcomes, wasCancelled);
-        reporter.WriteSessionComplete(report);
+        _reporter.WriteSessionComplete(report);
         return report;
     }
 
@@ -244,7 +247,7 @@ public sealed class StressTestRunner : IStressTestRunner
         var wasCancelled = false;
         var sessionTotalRequests = options.RequestsPerInterval * options.Cycles;
 
-        reporter.WriteSessionStart(options);
+        _reporter.WriteSessionStart(options);
 
         var elapsed = TimeSpan.Zero;
         TimeSpan? nextWaveStart = null;
@@ -266,7 +269,7 @@ public sealed class StressTestRunner : IStressTestRunner
                     var waitTime = nextWaveStart.Value - elapsed;
                     if (waitTime > TimeSpan.Zero)
                     {
-                        await delayProvider.DelayAsync(waitTime, cancellationToken).ConfigureAwait(false);
+                        await Task.Delay(waitTime, _timeProvider, cancellationToken).ConfigureAwait(false);
                         elapsed += waitTime;
                     }
                 }
@@ -312,7 +315,7 @@ public sealed class StressTestRunner : IStressTestRunner
                 }
             }
 
-            reporter.WriteCycleSummary(cycle, options.Cycles, cycleOutcomes);
+            _reporter.WriteCycleSummary(cycle, options.Cycles, cycleOutcomes);
 
             if (!wasCancelled && cycle < options.Cycles && options.CycleInterval > TimeSpan.Zero)
             {
@@ -322,7 +325,7 @@ public sealed class StressTestRunner : IStressTestRunner
                     break;
                 }
 
-                await delayProvider.DelayAsync(options.CycleInterval, cancellationToken).ConfigureAwait(false);
+                await Task.Delay(options.CycleInterval, _timeProvider, cancellationToken).ConfigureAwait(false);
                 elapsed += options.CycleInterval;
                 nextWaveStart = null;
             }
@@ -340,7 +343,7 @@ public sealed class StressTestRunner : IStressTestRunner
         }
 
         var report = new SessionReport(options, outcomes, wasCancelled);
-        reporter.WriteSessionComplete(report);
+        _reporter.WriteSessionComplete(report);
         return report;
     }
 
@@ -355,7 +358,7 @@ public sealed class StressTestRunner : IStressTestRunner
         CancellationToken cancellationToken)
     {
         var payloadIndex = (request - 1) % payloads.Count + 1;
-        var outcome = await httpClient.SendAsync(
+        var outcome = await _httpClient.SendAsync(
             options,
             payload,
             cycle,
@@ -400,7 +403,7 @@ public sealed class StressTestRunner : IStressTestRunner
             ? payload
             : null;
 
-        reporter.WriteVerboseRequest(
+        _reporter.WriteVerboseRequest(
             cycle,
             options.Cycles,
             request,

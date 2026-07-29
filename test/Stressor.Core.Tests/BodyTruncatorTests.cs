@@ -3,13 +3,13 @@ namespace Stressor.Core.Tests;
 public class BodyTruncatorTests
 {
     [Fact]
-    public void Truncate_EmptyInput_ReturnsEmpty()
+    public void Should_ReturnEmpty_When_EmptyInput()
     {
         Assert.Equal(string.Empty, BodyTruncator.Truncate(string.Empty));
     }
 
     [Fact]
-    public void Truncate_UnderLimit_ReturnsUnchanged()
+    public void Should_ReturnUnchanged_When_UnderLimit()
     {
         var value = new string('a', BodyTruncator.MaxBodyLength - 1);
 
@@ -17,7 +17,7 @@ public class BodyTruncatorTests
     }
 
     [Fact]
-    public void Truncate_AtLimit_ReturnsUnchanged()
+    public void Should_ReturnUnchanged_When_AtLimit()
     {
         var value = new string('a', BodyTruncator.MaxBodyLength);
 
@@ -25,7 +25,7 @@ public class BodyTruncatorTests
     }
 
     [Fact]
-    public void Truncate_OverLimit_AppendsTruncationSuffix()
+    public void Should_AppendTruncationSuffix_When_OverLimit()
     {
         var value = new string('a', BodyTruncator.MaxBodyLength + 100);
 
@@ -36,7 +36,7 @@ public class BodyTruncatorTests
     }
 
     [Fact]
-    public void Truncate_WithPrefix_PrependsPrefix()
+    public void Should_PrependPrefix_When_WithPrefix()
     {
         var value = "hello";
 
@@ -44,7 +44,7 @@ public class BodyTruncatorTests
     }
 
     [Fact]
-    public void Truncate_WithPrefixAndOverLimit_IncludesPrefixInResult()
+    public void Should_IncludePrefixInResult_When_WithPrefixAndOverLimit()
     {
         var value = new string('x', BodyTruncator.MaxBodyLength + 50);
 

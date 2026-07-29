@@ -4,15 +4,18 @@ using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Stressor.Core;
 
+/// <summary>Parses CLI arguments and runs stress-test sessions.</summary>
 public sealed class StressorAppRunner
 {
-    private readonly IServiceProvider serviceProvider;
+    private readonly IServiceProvider _serviceProvider;
 
+    /// <summary>Creates a runner that resolves services from the given provider.</summary>
     public StressorAppRunner(IServiceProvider serviceProvider)
     {
-        this.serviceProvider = serviceProvider;
+        _serviceProvider = serviceProvider;
     }
 
+    /// <summary>Parses arguments and runs the CLI, returning the process exit code.</summary>
     public async Task<int> RunAsync(string[] args, CancellationToken cancellationToken = default)
     {
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -156,19 +159,34 @@ public sealed class StressorAppRunner
 
         rootCommand.SetAction(async (parseResult, token) =>
         {
+            var url = parseResult.GetValue(urlOption)
+                ?? throw new InvalidOperationException("URL is required.");
+            var payload = parseResult.GetValue(payloadOption)
+                ?? throw new InvalidOperationException("Payload path is required.");
+            var method = parseResult.GetValue(methodOption)
+                ?? throw new InvalidOperationException("HTTP method is required.");
+            var interval = parseResult.GetValue(intervalOption)
+                ?? throw new InvalidOperationException("Interval is required.");
+            var load = parseResult.GetValue(loadOption)
+                ?? throw new InvalidOperationException("Load mode is required.");
+            var timeout = parseResult.GetValue(timeoutOption)
+                ?? throw new InvalidOperationException("Timeout is required.");
+            var cycleInterval = parseResult.GetValue(cycleIntervalOption)
+                ?? throw new InvalidOperationException("Cycle interval is required.");
+
             return await ExecuteAsync(
-                parseResult.GetValue(urlOption)!,
-                parseResult.GetValue(payloadOption)!,
-                parseResult.GetValue(methodOption)!,
+                url,
+                payload,
+                method,
                 parseResult.GetValue(requestsOption),
-                parseResult.GetValue(intervalOption)!,
+                interval,
                 parseResult.GetValue(cyclesOption),
                 parseResult.GetValue(authOption),
                 parseResult.GetValue(verboseOption),
-                parseResult.GetValue(loadOption)!,
+                load,
                 parseResult.GetValue(batchOption),
-                parseResult.GetValue(timeoutOption)!,
-                parseResult.GetValue(cycleIntervalOption)!,
+                timeout,
+                cycleInterval,
                 token).ConfigureAwait(false);
         });
 
@@ -300,7 +318,7 @@ public sealed class StressorAppRunner
             timeout,
             cycleInterval,
             cancellationToken,
-            serviceProvider).ConfigureAwait(false);
+            _serviceProvider).ConfigureAwait(false);
     }
 
     internal static int MapExitCode(SessionReport report)

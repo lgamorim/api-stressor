@@ -1,5 +1,6 @@
 namespace Stressor.Core;
 
+/// <summary>Result of a single HTTP request within a stress session.</summary>
 public sealed record RequestOutcome(
     int CycleNumber,
     int RequestNumber,

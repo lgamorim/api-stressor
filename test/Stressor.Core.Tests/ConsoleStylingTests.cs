@@ -3,7 +3,7 @@ namespace Stressor.Core.Tests;
 public class ConsoleStylingTests
 {
     [Fact]
-    public void FormatErrorPrefix_StringWriterOutput_ReturnsPlainPrefix()
+    public void Should_ReturnPlainErrorPrefix_When_StringWriterOutput()
     {
         using var writer = new StringWriter();
 
@@ -13,7 +13,7 @@ public class ConsoleStylingTests
     }
 
     [Fact]
-    public void FormatSuccessPrefix_StringWriterOutput_ReturnsPlainPrefix()
+    public void Should_ReturnPlainSuccessPrefix_When_StringWriterOutput()
     {
         using var writer = new StringWriter();
 

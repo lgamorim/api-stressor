@@ -6,7 +6,7 @@ using System.Text;
 public class RequestFailureFormatterTests
 {
     [Fact]
-    public void SummarizeBody_ProblemJson_ExtractsDetail()
+    public void Should_ExtractDetail_When_ProblemJson()
     {
         const string body = """{"type":"about:blank","title":"Validation failed","status":400,"detail":"Email is required"}""";
 
@@ -16,7 +16,7 @@ public class RequestFailureFormatterTests
     }
 
     [Fact]
-    public void SummarizeBody_SimpleJsonMessage_ExtractsMessage()
+    public void Should_ExtractMessage_When_SimpleJsonMessage()
     {
         const string body = """{"message":"Invalid payload"}""";
 
@@ -26,7 +26,7 @@ public class RequestFailureFormatterTests
     }
 
     [Fact]
-    public void SummarizeBody_LargeJson_TruncatesRawBody()
+    public void Should_TruncateRawBody_When_LargeJson()
     {
         var body = $"{{\"data\":\"{new string('x', RequestFailureFormatter.MaxBodyLength + 100)}\"}}";
 
@@ -38,7 +38,7 @@ public class RequestFailureFormatterTests
     }
 
     [Fact]
-    public void SummarizeBody_Html_StripsTagsAndTruncates()
+    public void Should_StripTagsAndTruncate_When_Html()
     {
         var body = "<html><body><h1>Error</h1><p>Something went wrong</p></body></html>";
 
@@ -48,7 +48,7 @@ public class RequestFailureFormatterTests
     }
 
     [Fact]
-    public void SummarizeBody_LargeHtml_TruncatesText()
+    public void Should_TruncateText_When_LargeHtml()
     {
         var body = $"<html><body>{new string('x', RequestFailureFormatter.MaxBodyLength + 50)}</body></html>";
 
@@ -59,7 +59,7 @@ public class RequestFailureFormatterTests
     }
 
     [Fact]
-    public void FormatException_UnwrapsInnerExceptions()
+    public void Should_UnwrapInnerExceptions_When_FormatException()
     {
         var inner = new IOException("Connection refused");
         var outer = new HttpRequestException("No connection could be made", inner);
@@ -70,7 +70,7 @@ public class RequestFailureFormatterTests
     }
 
     [Fact]
-    public void FormatException_HttpRequestExceptionWithStatusCode_IncludesStatus()
+    public void Should_IncludeStatus_When_HttpRequestExceptionWithStatusCode()
     {
         var exception = new HttpRequestException("Bad gateway", null, HttpStatusCode.BadGateway);
 
@@ -80,13 +80,13 @@ public class RequestFailureFormatterTests
     }
 
     [Fact]
-    public void FormatTimeout_ReturnsExpectedMessage()
+    public void Should_ReturnExpectedMessage_When_FormatTimeout()
     {
         Assert.Equal("Request timed out.", RequestFailureFormatter.FormatTimeout());
     }
 
     [Fact]
-    public async Task FormatHttpErrorAsync_IncludesResponseBodySummary()
+    public async Task Should_IncludeResponseBodySummary_When_FormatHttpErrorAsync()
     {
         using var response = new HttpResponseMessage(HttpStatusCode.BadRequest)
         {

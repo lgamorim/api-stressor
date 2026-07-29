@@ -1,14 +1,12 @@
 namespace Stressor.Core.Tests;
 
-using System.Net;
-
 public sealed class StubHttpMessageHandler : HttpMessageHandler
 {
-    private readonly Func<HttpRequestMessage, HttpResponseMessage> responseFactory;
+    private readonly Func<HttpRequestMessage, HttpResponseMessage> _responseFactory;
 
     public StubHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responseFactory)
     {
-        this.responseFactory = responseFactory;
+        _responseFactory = responseFactory;
     }
 
     public List<HttpRequestMessage> Requests { get; } = [];
@@ -31,6 +29,6 @@ public sealed class StubHttpMessageHandler : HttpMessageHandler
             throw new TaskCanceledException();
         }
 
-        return responseFactory(request);
+        return _responseFactory(request);
     }
 }
