@@ -5,8 +5,8 @@ alwaysApply: true
 
 # Workflow — Core
 
-Applies to every project regardless of team size or archetype. Enable exactly
-one overlay in Cursor Settings → Rules: `workflow-solo` or `workflow-team`.
+Applies to every project regardless of team size or archetype. This repo uses
+the `workflow-solo` overlay (`.cursor/rules/overlays/workflow-solo.mdc`).
 
 - Make minimal, focused changes; do not refactor unrelated code in the same
   change.
