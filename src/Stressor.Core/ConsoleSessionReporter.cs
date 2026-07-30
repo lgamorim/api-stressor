@@ -32,6 +32,11 @@ public sealed class ConsoleSessionReporter : IConsoleSessionReporter
             _output.WriteLine("  Auth:     configured");
         }
 
+        if (options.Headers.Count > 0)
+        {
+            _output.WriteLine($"  Headers:  {options.Headers.Count.ToString(CultureInfo.InvariantCulture)} configured");
+        }
+
         if (options.Load == LoadMode.Batch)
         {
             _output.WriteLine($"  Rate:     {options.RequestsPerInterval.ToString(CultureInfo.InvariantCulture)} requests/cycle, batch {options.Batch.ToString(CultureInfo.InvariantCulture)}, {FormatInterval(options.Interval)} between wave starts");

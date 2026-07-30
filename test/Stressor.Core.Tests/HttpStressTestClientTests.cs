@@ -143,6 +143,57 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
+    public async Task Should_SendCustomHeader_When_HeadersProvided()
+    {
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
+        var client = CreateClient(handler);
+        var options = CreateOptions(HttpMethod.Post) with
+        {
+            Headers = new Dictionary<string, string> { ["X-Api-Key"] = "abc123" }
+        };
+
+        await client.SendAsync(options, "{}", 1, 1, TestCancellation.Token);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.True(request.Headers.TryGetValues("X-Api-Key", out var values));
+        Assert.Equal("abc123", Assert.Single(values));
+    }
+
+    [Fact]
+    public async Task Should_OverrideContentType_When_HeaderProvided()
+    {
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
+        var client = CreateClient(handler);
+        var options = CreateOptions(HttpMethod.Post) with
+        {
+            Headers = new Dictionary<string, string> { ["Content-Type"] = "text/plain" }
+        };
+
+        await client.SendAsync(options, "{}", 1, 1, TestCancellation.Token);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.NotNull(request.Content?.Headers.ContentType);
+        Assert.Equal("text/plain", request.Content.Headers.ContentType.MediaType);
+    }
+
+    [Fact]
+    public async Task Should_ApplyAuthAfterHeaders_When_BothProvided()
+    {
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
+        var client = CreateClient(handler);
+        var options = CreateOptions(HttpMethod.Post) with
+        {
+            Headers = new Dictionary<string, string> { ["Authorization"] = "Bearer from-headers" },
+            Auth = "Bearer from-auth"
+        };
+
+        await client.SendAsync(options, "{}", 1, 1, TestCancellation.Token);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("Bearer from-auth", request.Headers.Authorization?.ToString());
+    }
+
+    [Fact]
     public async Task Should_SendAuthorizationHeader_When_AuthProvided()
     {
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));

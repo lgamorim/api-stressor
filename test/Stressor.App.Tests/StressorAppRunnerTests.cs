@@ -235,7 +235,7 @@ public class StressorAppRunnerTests
             var exitCode = await new StressorAppRunner(CreateProvider()).RunAsync(["--version"], TestCancellation.Token);
 
             Assert.Equal(0, exitCode);
-            Assert.Contains("0.7.0-alpha", writer.ToString(), StringComparison.Ordinal);
+            Assert.Contains("0.8.0-alpha", writer.ToString(), StringComparison.Ordinal);
         }
         finally
         {
@@ -1202,6 +1202,95 @@ public class StressorAppRunnerTests
         var exitCode = await ExecuteWithRunner(Substitute.For<IStressTestRunner>(), ["--config", path]);
 
         Assert.Equal(1, exitCode);
+    }
+
+    [Fact]
+    public async Task Should_SendCustomHeader_When_HeaderFlagProvided()
+    {
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        await ExecuteWithRunner(
+            stressTestRunner,
+            [.. CreateArgs(), "--header", "X-Api-Key: abc123"]);
+
+        await stressTestRunner.Received(1).RunAsync(
+            Arg.Is<StressTestOptions>(o => o.Headers.ContainsKey("X-Api-Key") && o.Headers["X-Api-Key"] == "abc123"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_MergeHeadersFile_When_HeadersFlagProvided()
+    {
+        var headersPath = await WriteTempHeadersAsync("""{ "X-Correlation-Id": "run-42" }""");
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        await ExecuteWithRunner(
+            stressTestRunner,
+            [.. CreateArgs(), "--headers", headersPath]);
+
+        await stressTestRunner.Received(1).RunAsync(
+            Arg.Is<StressTestOptions>(o => o.Headers.ContainsKey("X-Correlation-Id") && o.Headers["X-Correlation-Id"] == "run-42"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_ReturnExitCodeOne_When_InvalidHeaderFormat()
+    {
+        var exitCode = await ExecuteWithRunner(
+            Substitute.For<IStressTestRunner>(),
+            [.. CreateArgs(), "--header", "not-a-header"]);
+
+        Assert.Equal(1, exitCode);
+    }
+
+    [Fact]
+    public async Task Should_ReturnExitCodeOne_When_HeadersFileNotFound()
+    {
+        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json");
+
+        var exitCode = await ExecuteWithRunner(
+            Substitute.For<IStressTestRunner>(),
+            [.. CreateArgs(), "--headers", path]);
+
+        Assert.Equal(1, exitCode);
+    }
+
+    [Fact]
+    public async Task Should_OverrideConfigHeader_When_CliHeaderExplicit()
+    {
+        var configPath = await WriteTempScenarioAsync(
+            """
+            {
+              "url": "https://example.com",
+              "payload": "payload.json",
+              "requests": 1,
+              "interval": "1s",
+              "headers": { "X-Api-Key": "from-config" }
+            }
+            """);
+
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        await ExecuteWithRunner(
+            stressTestRunner,
+            ["--config", configPath, "--header", "X-Api-Key: from-cli"]);
+
+        await stressTestRunner.Received(1).RunAsync(
+            Arg.Is<StressTestOptions>(o => o.Headers.ContainsKey("X-Api-Key") && o.Headers["X-Api-Key"] == "from-cli"),
+            Arg.Any<CancellationToken>());
+    }
+
+    private static async Task<string> WriteTempHeadersAsync(string content)
+    {
+        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json");
+        await File.WriteAllTextAsync(path, content, TestCancellation.Token);
+        return path;
     }
 
     private static async Task<string> WriteTempScenarioAsync(string content)

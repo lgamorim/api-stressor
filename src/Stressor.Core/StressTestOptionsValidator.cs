@@ -90,6 +90,14 @@ public static class StressTestOptionsValidator
             errors.Add("Cycle interval must be greater than or equal to zero.");
         }
 
+        foreach (var header in options.Headers)
+        {
+            if (string.IsNullOrWhiteSpace(header.Key))
+            {
+                errors.Add("Header name cannot be empty or whitespace.");
+            }
+        }
+
         return errors;
     }
 }

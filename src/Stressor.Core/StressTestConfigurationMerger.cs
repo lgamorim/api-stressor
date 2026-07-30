@@ -25,6 +25,9 @@ public static class StressTestConfigurationMerger
                 Interval = document.Interval,
                 Cycles = document.Cycles ?? values.Cycles,
                 Auth = document.Auth,
+                Headers = document.Headers is null
+                    ? values.Headers
+                    : HttpHeadersMerger.Merge(values.Headers, document.Headers),
                 Verbose = document.Verbose,
                 Load = document.Load ?? values.Load,
                 Batch = document.Batch ?? values.Batch,

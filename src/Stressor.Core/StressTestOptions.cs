@@ -16,6 +16,10 @@ public sealed record StressTestOptions(
     /// <summary>Default per-request timeout when none is specified.</summary>
     public static readonly TimeSpan DefaultRequestTimeout = TimeSpan.FromSeconds(100);
 
+    /// <summary>Custom HTTP headers sent with each request.</summary>
+    public IReadOnlyDictionary<string, string> Headers { get; init; } =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Maximum time to wait for a single HTTP response.</summary>
     public TimeSpan RequestTimeout { get; init; } = DefaultRequestTimeout;
 

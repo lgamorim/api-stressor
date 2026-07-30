@@ -27,6 +27,12 @@ public sealed record StressTestCliOverrides
     /// <summary>Authorization header value from the CLI.</summary>
     public string? Auth { get; init; }
 
+    /// <summary>Path to a JSON headers file from the CLI.</summary>
+    public string? HeadersFile { get; init; }
+
+    /// <summary>Header strings from repeatable --header flags.</summary>
+    public IReadOnlyList<string> Header { get; init; } = [];
+
     /// <summary>Verbose mode from the CLI.</summary>
     public string? Verbose { get; init; }
 

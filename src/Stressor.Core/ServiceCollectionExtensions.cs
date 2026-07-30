@@ -10,6 +10,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<IJsonPayloadReader, JsonPayloadReader>();
         services.AddSingleton<IStressTestScenarioReader, JsonStressTestScenarioReader>();
+        services.AddSingleton<IHttpHeadersReader, JsonHttpHeadersReader>();
         services.AddSingleton<IHttpStressTestClient, HttpStressTestClient>();
         services.AddSingleton<IStressTestRunner, StressTestRunner>();
         services.AddSingleton<IConsoleSessionReporter, ConsoleSessionReporter>();

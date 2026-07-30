@@ -24,6 +24,12 @@ public static class StressTestConfigurationOptionNames
     /// <summary>Auth option name.</summary>
     public const string Auth = "auth";
 
+    /// <summary>Headers file option name.</summary>
+    public const string HeadersFile = "headersFile";
+
+    /// <summary>Header option name.</summary>
+    public const string Header = "header";
+
     /// <summary>Verbose option name.</summary>
     public const string Verbose = "verbose";
 

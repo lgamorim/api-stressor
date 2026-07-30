@@ -1,6 +1,7 @@
 namespace Stressor.Core;
 
 using System.Diagnostics;
+using System.Net.Http.Headers;
 using System.Text;
 
 /// <summary>Sends HTTP requests for stress testing via a named <see cref="IHttpClientFactory"/> client.</summary>
@@ -132,12 +133,33 @@ public sealed class HttpStressTestClient : IHttpStressTestClient
             request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
         }
 
+        ApplyHeaders(request, options.Headers);
+
         if (!string.IsNullOrWhiteSpace(options.Auth))
         {
+            request.Headers.Remove("Authorization");
             request.Headers.TryAddWithoutValidation("Authorization", options.Auth);
         }
 
         return request;
+    }
+
+    internal static void ApplyHeaders(HttpRequestMessage request, IReadOnlyDictionary<string, string> headers)
+    {
+        foreach (var (name, value) in headers)
+        {
+            if (string.Equals(name, "Content-Type", StringComparison.OrdinalIgnoreCase))
+            {
+                if (request.Content is not null)
+                {
+                    request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(value);
+                }
+
+                continue;
+            }
+
+            request.Headers.TryAddWithoutValidation(name, value);
+        }
     }
 
     internal static bool HttpMethodSupportsBody(HttpMethod method) =>

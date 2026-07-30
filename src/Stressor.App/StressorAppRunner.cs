@@ -119,6 +119,14 @@ public sealed class StressorAppRunner
         {
             Description = "Authorization header value (e.g. Bearer <token>)"
         };
+        var headerOption = new Option<string[]>("--header", "-H")
+        {
+            Description = "Request header (Name: Value). Repeatable."
+        };
+        var headersFileOption = new Option<string?>("--headers")
+        {
+            Description = "Path to a JSON file of HTTP headers"
+        };
         var verboseOption = new Option<string?>("--verbose", "-v")
         {
             Description = "Per-request output mode: failures or full"
@@ -151,6 +159,8 @@ public sealed class StressorAppRunner
         rootCommand.Options.Add(requestsOption);
         rootCommand.Options.Add(intervalOption);
         rootCommand.Options.Add(authOption);
+        rootCommand.Options.Add(headerOption);
+        rootCommand.Options.Add(headersFileOption);
         rootCommand.Options.Add(verboseOption);
         rootCommand.Options.Add(loadOption);
         rootCommand.Options.Add(batchOption);
@@ -186,6 +196,8 @@ public sealed class StressorAppRunner
                 intervalOption,
                 cyclesOption,
                 authOption,
+                headerOption,
+                headersFileOption,
                 verboseOption,
                 loadOption,
                 batchOption,
@@ -194,12 +206,56 @@ public sealed class StressorAppRunner
 
             var configuration = StressTestConfigurationMerger.Merge(document, configPath, cliOverrides);
 
+            try
+            {
+                configuration = await ApplyHeaderLayersAsync(configuration, cliOverrides, token).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                await Console.Error.WriteLineAsync(ex.Message).ConfigureAwait(false);
+                return 1;
+            }
+
             return await ExecuteAsync(configuration, token, _serviceProvider).ConfigureAwait(false);
         });
 
         StressorAppHelp.Configure(rootCommand);
 
         return rootCommand;
+    }
+
+    internal async Task<StressTestConfigurationValues> ApplyHeaderLayersAsync(
+        StressTestConfigurationValues configuration,
+        StressTestCliOverrides cliOverrides,
+        CancellationToken cancellationToken)
+    {
+        var headers = configuration.Headers;
+
+        if (cliOverrides.IsSpecified(StressTestConfigurationOptionNames.HeadersFile)
+            && !string.IsNullOrWhiteSpace(cliOverrides.HeadersFile))
+        {
+            var headersReader = _serviceProvider.GetRequiredService<IHttpHeadersReader>();
+            var fileHeaders = await headersReader.ReadAsync(cliOverrides.HeadersFile, cancellationToken).ConfigureAwait(false);
+            headers = HttpHeadersMerger.Merge(headers, fileHeaders);
+        }
+
+        if (cliOverrides.IsSpecified(StressTestConfigurationOptionNames.Header) && cliOverrides.Header.Count > 0)
+        {
+            var cliHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var header in cliOverrides.Header)
+            {
+                if (!HttpHeaderParser.TryParse(header, out var name, out var value))
+                {
+                    throw new ArgumentException("Header must be in Name: Value format.");
+                }
+
+                cliHeaders[name] = value;
+            }
+
+            headers = HttpHeadersMerger.Merge(headers, cliHeaders);
+        }
+
+        return configuration with { Headers = headers };
     }
 
     internal static StressTestCliOverrides BuildCliOverrides(
@@ -211,6 +267,8 @@ public sealed class StressorAppRunner
         Option<string?> intervalOption,
         Option<int> cyclesOption,
         Option<string?> authOption,
+        Option<string[]> headerOption,
+        Option<string?> headersFileOption,
         Option<string?> verboseOption,
         Option<string> loadOption,
         Option<int> batchOption,
@@ -254,6 +312,16 @@ public sealed class StressorAppRunner
             specified.Add(StressTestConfigurationOptionNames.Auth);
         }
 
+        if (IsOptionSpecified(parseResult, headerOption))
+        {
+            specified.Add(StressTestConfigurationOptionNames.Header);
+        }
+
+        if (IsOptionSpecified(parseResult, headersFileOption))
+        {
+            specified.Add(StressTestConfigurationOptionNames.HeadersFile);
+        }
+
         if (IsOptionSpecified(parseResult, verboseOption))
         {
             specified.Add(StressTestConfigurationOptionNames.Verbose);
@@ -289,6 +357,8 @@ public sealed class StressorAppRunner
             Interval = parseResult.GetValue(intervalOption),
             Cycles = parseResult.GetValue(cyclesOption),
             Auth = parseResult.GetValue(authOption),
+            HeadersFile = parseResult.GetValue(headersFileOption),
+            Header = parseResult.GetValue(headerOption) ?? [],
             Verbose = parseResult.GetValue(verboseOption),
             Load = parseResult.GetValue(loadOption),
             Batch = parseResult.GetValue(batchOption),

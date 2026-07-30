@@ -84,7 +84,8 @@ public static class StressTestOptionParser
             values.Batch)
         {
             RequestTimeout = timeoutSpan,
-            CycleInterval = cycleIntervalSpan
+            CycleInterval = cycleIntervalSpan,
+            Headers = values.Headers
         };
 
         var validationErrors = StressTestOptionsValidator.Validate(options);

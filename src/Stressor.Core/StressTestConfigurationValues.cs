@@ -24,6 +24,10 @@ public sealed record StressTestConfigurationValues
     /// <summary>Authorization header value.</summary>
     public string? Auth { get; init; }
 
+    /// <summary>Custom HTTP headers.</summary>
+    public IReadOnlyDictionary<string, string> Headers { get; init; } =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Per-request output mode.</summary>
     public string? Verbose { get; init; }
 

@@ -19,6 +19,8 @@ dotnet run --project src/Stressor.App -- `
   --interval <duration> `
   [--method <http-verb>] `
   [--auth <authorization-header-value>] `
+  [--header <name-value>] `
+  [--headers <path-to-headers.json>] `
   [--load <gentle-pacing|fixed-rate|batch>] `
   [--batch <count>] `
   [--timeout <duration>] `
@@ -62,6 +64,8 @@ When running the built executable:
 | `--interval` | `-i` | Yes* | Delay between consecutive request starts (see formats and load modes below) |
 | `--method` | `-m` | No | HTTP method to use (default: `POST`) |
 | `--auth` | `-a` | No | Authorization header value sent with each request (e.g. `Bearer <token>`) |
+| `--header` | `-H` | No | Request header in `Name: Value` format (repeatable) |
+| `--headers` | | No | Path to a JSON file of HTTP header name/value pairs |
 | `--load` | `-l` | No | Load handling mode: `gentle-pacing` (default), `fixed-rate`, or `batch` |
 | `--batch` | `-b` | No | Max parallel requests per wave (default: `1`; use with `--load batch`) |
 | `--timeout` | `-t` | No | Per-request timeout (default: `100s`; same formats as `--interval`) |
@@ -88,6 +92,10 @@ Example `scenario.json`:
   "interval": "1s",
   "cycles": 60,
   "auth": "Bearer your-token-here",
+  "headers": {
+    "X-Tenant-Id": "acme",
+    "Accept": "application/json"
+  },
   "verbose": "failures",
   "load": "gentle-pacing",
   "batch": 1,
@@ -125,6 +133,27 @@ Use `--auth` when the API requires an `Authorization` header. Pass the full head
 ```
 
 If `--auth` is omitted, no authorization header is sent.
+
+### Custom HTTP headers
+
+Send additional headers with `--header` (repeatable), `--headers` (JSON file), or a `headers` object in the scenario config.
+
+```powershell
+--header "X-Api-Key: abc123" `
+--headers ./extra-headers.json
+```
+
+Headers file example (`extra-headers.json`):
+
+```json
+{
+  "X-Correlation-Id": "run-42"
+}
+```
+
+Merge precedence (lowest to highest): scenario `headers` → `--headers` file → each `--header` → `--auth` (which sets `Authorization` last).
+
+For body-bearing methods, a `Content-Type` header overrides the default `application/json` body type.
 
 ### Interval formats
 

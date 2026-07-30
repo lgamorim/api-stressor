@@ -3,6 +3,19 @@ namespace Stressor.Core.Tests;
 public class StressTestConfigurationMergerTests
 {
     [Fact]
+    public void Should_MergeConfigHeaders_When_DocumentProvidesHeaders()
+    {
+        var document = new StressTestScenarioDocument
+        {
+            Headers = new Dictionary<string, string> { ["X-Tenant-Id"] = "acme" }
+        };
+
+        var merged = StressTestConfigurationMerger.Merge(document, null, new StressTestCliOverrides());
+
+        Assert.Equal("acme", merged.Headers["X-Tenant-Id"]);
+    }
+
+    [Fact]
     public void Should_UseConfigValues_When_CliOmitted()
     {
         var document = new StressTestScenarioDocument

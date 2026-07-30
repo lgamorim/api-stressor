@@ -24,6 +24,9 @@ public sealed record StressTestScenarioDocument
     /// <summary>Authorization header value.</summary>
     public string? Auth { get; init; }
 
+    /// <summary>Custom HTTP headers.</summary>
+    public Dictionary<string, string>? Headers { get; init; }
+
     /// <summary>Per-request output mode: failures or full.</summary>
     public string? Verbose { get; init; }
 

@@ -102,6 +102,27 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
+    public void Should_ShowHeadersCount_When_HeadersConfigured()
+    {
+        var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var reporter = new ConsoleSessionReporter(writer);
+        var options = CreateOptions() with
+        {
+            Headers = new Dictionary<string, string>
+            {
+                ["X-Api-Key"] = "secret",
+                ["Accept"] = "application/json"
+            }
+        };
+
+        reporter.WriteSessionStart(options);
+
+        var output = writer.ToString();
+        Assert.Contains("Headers:  2 configured", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("secret", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Should_ShowConfiguredIndicator_When_AuthConfigured()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);
