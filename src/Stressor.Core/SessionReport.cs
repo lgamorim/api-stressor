@@ -71,6 +71,21 @@ public sealed class SessionReport
         }
     }
 
+    /// <summary>50th-percentile latency among successful requests, or <see langword="null"/> when none succeeded.</summary>
+    public TimeSpan? P50Latency => GetPercentile(50);
+
+    /// <summary>95th-percentile latency among successful requests, or <see langword="null"/> when none succeeded.</summary>
+    public TimeSpan? P95Latency => GetPercentile(95);
+
+    /// <summary>99th-percentile latency among successful requests, or <see langword="null"/> when none succeeded.</summary>
+    public TimeSpan? P99Latency => GetPercentile(99);
+
+    private TimeSpan? GetPercentile(int percentile)
+    {
+        var latencies = GetSuccessfulLatencies().ToList();
+        return LatencyPercentiles.GetPercentile(latencies, percentile);
+    }
+
     private IEnumerable<TimeSpan> GetSuccessfulLatencies() =>
         Outcomes.Where(o => o.IsSuccess).Select(o => o.Latency);
 }

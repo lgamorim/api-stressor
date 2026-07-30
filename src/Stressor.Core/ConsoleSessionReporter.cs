@@ -130,10 +130,13 @@ public sealed class ConsoleSessionReporter : IConsoleSessionReporter
 
         if (report.MinLatency is { } minLatency
             && report.AverageLatency is { } averageLatency
-            && report.MaxLatency is { } maxLatency)
+            && report.MaxLatency is { } maxLatency
+            && report.P50Latency is { } p50Latency
+            && report.P95Latency is { } p95Latency
+            && report.P99Latency is { } p99Latency)
         {
             _output.WriteLine(
-                $"  Latency:   min {minLatency.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture)}ms  avg {averageLatency.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture)}ms  max {maxLatency.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture)}ms");
+                $"  Latency:   min {FormatLatencyMs(minLatency)}  avg {FormatLatencyMs(averageLatency)}  max {FormatLatencyMs(maxLatency)}  p50 {FormatLatencyMs(p50Latency)}  p95 {FormatLatencyMs(p95Latency)}  p99 {FormatLatencyMs(p99Latency)}");
         }
         else
         {
@@ -191,6 +194,9 @@ public sealed class ConsoleSessionReporter : IConsoleSessionReporter
 
         return "error";
     }
+
+    private static string FormatLatencyMs(TimeSpan latency) =>
+        $"{latency.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture)}ms";
 
     private static string FormatVerboseMode(VerboseMode mode) =>
         mode switch

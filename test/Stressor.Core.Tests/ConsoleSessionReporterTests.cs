@@ -5,6 +5,28 @@ using System.Globalization;
 public class ConsoleSessionReporterTests
 {
     [Fact]
+    public void Should_PrintPercentileLatencies_When_SuccessfulSession()
+    {
+        var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var reporter = new ConsoleSessionReporter(writer);
+        var options = CreateOptions();
+        var outcomes = new[]
+        {
+            new RequestOutcome(1, 1, true, false, 200, TimeSpan.FromMilliseconds(30), null),
+            new RequestOutcome(1, 2, true, false, 200, TimeSpan.FromMilliseconds(50), null),
+            new RequestOutcome(1, 3, true, false, 200, TimeSpan.FromMilliseconds(70), null)
+        };
+        var report = new SessionReport(options, outcomes, false);
+
+        reporter.WriteSessionComplete(report);
+
+        var output = writer.ToString();
+        Assert.Contains("p50 50ms", output, StringComparison.Ordinal);
+        Assert.Contains("p95 70ms", output, StringComparison.Ordinal);
+        Assert.Contains("p99 70ms", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Should_ContainUrlMethodAndSucceededCount_When_FullSuccessSession()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);

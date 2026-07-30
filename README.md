@@ -286,7 +286,7 @@ Cycle 1/5  OK 10  Fail 0  Avg 45ms
 Session complete
   Succeeded: 598
   Failed:    2
-  Latency:   min 32ms  avg 47ms  max 210ms
+  Latency:   min 32ms  avg 47ms  max 210ms  p50 45ms  p95 180ms  p99 205ms
 ```
 
 - **OK** — requests that returned a successful HTTP status (2xx)

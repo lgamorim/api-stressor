@@ -17,6 +17,9 @@ public class SessionReportTests
         Assert.Null(report.MinLatency);
         Assert.Null(report.AverageLatency);
         Assert.Null(report.MaxLatency);
+        Assert.Null(report.P50Latency);
+        Assert.Null(report.P95Latency);
+        Assert.Null(report.P99Latency);
     }
 
     [Fact]
@@ -35,6 +38,9 @@ public class SessionReportTests
         Assert.Equal(TimeSpan.FromMilliseconds(30), report.MinLatency);
         Assert.Equal(TimeSpan.FromMilliseconds(70), report.MaxLatency);
         Assert.Equal(TimeSpan.FromMilliseconds(50), report.AverageLatency);
+        Assert.Equal(TimeSpan.FromMilliseconds(50), report.P50Latency);
+        Assert.Equal(TimeSpan.FromMilliseconds(70), report.P95Latency);
+        Assert.Equal(TimeSpan.FromMilliseconds(70), report.P99Latency);
     }
 
     [Fact]
@@ -64,5 +70,8 @@ public class SessionReportTests
         Assert.Null(report.MinLatency);
         Assert.Null(report.AverageLatency);
         Assert.Null(report.MaxLatency);
+        Assert.Null(report.P50Latency);
+        Assert.Null(report.P95Latency);
+        Assert.Null(report.P99Latency);
     }
 }
