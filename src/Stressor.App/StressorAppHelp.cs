@@ -49,6 +49,15 @@ public static class StressorAppHelp
         output.WriteLine("  Stressor.App -u https://api.example.com/orders -p ./payloads.json -m POST \\");
         output.WriteLine("    -r 10 -i 1s -c 60 -a \"Bearer your-token-here\"");
         output.WriteLine();
+        output.WriteLine("  Stressor.App --config ./scenario.json");
+        output.WriteLine();
+        output.WriteLine("  Stressor.App --config ./scenario.json --cycles 10");
+        output.WriteLine();
+        output.WriteLine("Scenario config file:");
+        output.WriteLine("  Use --config to load settings from a JSON file with the same fields as the CLI options.");
+        output.WriteLine("  Explicit CLI flags override config values; omitted flags keep config values.");
+        output.WriteLine("  Payload paths in the config file are resolved relative to the config file directory.");
+        output.WriteLine();
         output.WriteLine("Payload file:");
         output.WriteLine("  Single body: any JSON value sent unchanged on every request.");
         output.WriteLine("  Multi-payload: root object with only a \"payloads\" array; items rotate");

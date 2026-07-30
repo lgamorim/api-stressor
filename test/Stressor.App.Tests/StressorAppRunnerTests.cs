@@ -235,7 +235,7 @@ public class StressorAppRunnerTests
             var exitCode = await new StressorAppRunner(CreateProvider()).RunAsync(["--version"], TestCancellation.Token);
 
             Assert.Equal(0, exitCode);
-            Assert.Contains("0.6.0-alpha", writer.ToString(), StringComparison.Ordinal);
+            Assert.Contains("0.7.0-alpha", writer.ToString(), StringComparison.Ordinal);
         }
         finally
         {
@@ -382,21 +382,21 @@ public class StressorAppRunnerTests
     [InlineData("FULL", VerboseMode.Full)]
     public void Should_ParseKnownModes_When_TryParseVerboseMode(string value, VerboseMode expected)
     {
-        Assert.True(StressorAppRunner.TryParseVerboseMode(value, out var mode));
+        Assert.True(StressTestOptionParser.TryParseVerboseMode(value, out var mode));
         Assert.Equal(expected, mode);
     }
 
     [Fact]
     public void Should_ReturnOff_When_Null()
     {
-        Assert.True(StressorAppRunner.TryParseVerboseMode(null, out var mode));
+        Assert.True(StressTestOptionParser.TryParseVerboseMode(null, out var mode));
         Assert.Equal(VerboseMode.Off, mode);
     }
 
     [Fact]
     public void Should_ReturnFalse_When_Unknown()
     {
-        Assert.False(StressorAppRunner.TryParseVerboseMode("unknown", out _));
+        Assert.False(StressTestOptionParser.TryParseVerboseMode("unknown", out _));
     }
 
     [Fact]
@@ -600,7 +600,7 @@ public class StressorAppRunnerTests
     [InlineData("250ms", 250)]
     public void Should_ReturnTrue_When_TryParseIntervalValidValues(string value, double expectedMilliseconds)
     {
-        Assert.True(StressorAppRunner.TryParseInterval(value, out var interval));
+        Assert.True(StressTestOptionParser.TryParseInterval(value, out var interval));
         Assert.Equal(TimeSpan.FromMilliseconds(expectedMilliseconds), interval);
     }
 
@@ -609,7 +609,7 @@ public class StressorAppRunnerTests
     [InlineData("00:00:00.500", 500)]
     public void Should_ReturnTrue_When_TimeSpanFormat(string value, double expectedMilliseconds)
     {
-        Assert.True(StressorAppRunner.TryParseInterval(value, out var interval));
+        Assert.True(StressTestOptionParser.TryParseInterval(value, out var interval));
         Assert.Equal(TimeSpan.FromMilliseconds(expectedMilliseconds), interval);
     }
 
@@ -623,7 +623,7 @@ public class StressorAppRunnerTests
     [InlineData("s")]
     public void Should_ReturnFalse_When_TryParseIntervalInvalidValues(string value)
     {
-        Assert.False(StressorAppRunner.TryParseInterval(value, out _));
+        Assert.False(StressTestOptionParser.TryParseInterval(value, out _));
     }
 
     [Fact]
@@ -799,7 +799,7 @@ public class StressorAppRunnerTests
     [InlineData("BATCH", LoadMode.Batch)]
     public void Should_ReturnTrue_When_TryParseLoadModeValidValues(string value, LoadMode expected)
     {
-        Assert.True(StressorAppRunner.TryParseLoadMode(value, out var loadMode));
+        Assert.True(StressTestOptionParser.TryParseLoadMode(value, out var loadMode));
         Assert.Equal(expected, loadMode);
     }
 
@@ -809,7 +809,7 @@ public class StressorAppRunnerTests
     [InlineData("fixed")]
     public void Should_ReturnFalse_When_TryParseLoadModeInvalidValues(string value)
     {
-        Assert.False(StressorAppRunner.TryParseLoadMode(value, out _));
+        Assert.False(StressTestOptionParser.TryParseLoadMode(value, out _));
     }
 
     [Fact]
@@ -1078,7 +1078,7 @@ public class StressorAppRunnerTests
     [InlineData("00:00:00")]
     public void Should_ReturnTrueWhenAllowZero_When_ZeroValues(string value)
     {
-        Assert.True(StressorAppRunner.TryParseInterval(value, allowZero: true, out var interval));
+        Assert.True(StressTestOptionParser.TryParseInterval(value, allowZero: true, out var interval));
         Assert.Equal(TimeSpan.Zero, interval);
     }
 
@@ -1088,12 +1088,13 @@ public class StressorAppRunnerTests
     [InlineData("00:00:00")]
     public void Should_ReturnFalseWhenAllowZeroFalse_When_ZeroValues(string value)
     {
-        Assert.False(StressorAppRunner.TryParseInterval(value, allowZero: false, out _));
+        Assert.False(StressTestOptionParser.TryParseInterval(value, allowZero: false, out _));
     }
 
     private static async Task<int> ExecuteWithRunner(IStressTestRunner stressTestRunner, string[] args)
     {
         var services = new ServiceCollection();
+        services.AddStressorCore();
         services.AddSingleton(stressTestRunner);
         var provider = services.BuildServiceProvider();
         return await new StressorAppRunner(provider).RunAsync(args, TestCancellation.Token);
@@ -1102,8 +1103,112 @@ public class StressorAppRunnerTests
     private static IServiceProvider CreateProvider(IStressTestRunner? stressTestRunner = null)
     {
         var services = new ServiceCollection();
+        services.AddStressorCore();
         services.AddSingleton(stressTestRunner ?? Substitute.For<IStressTestRunner>());
         return services.BuildServiceProvider();
+    }
+
+    [Fact]
+    public async Task Should_ReturnExitCodeZero_When_ConfigProvidesRequiredFields()
+    {
+        var configPath = await WriteTempScenarioAsync(
+            """
+            {
+              "url": "https://example.com/orders",
+              "payload": "payload.json",
+              "requests": 1,
+              "interval": "1s"
+            }
+            """);
+
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        var options = CreateOptions() with { Url = new Uri("https://example.com/orders") };
+        var report = new SessionReport(options, [new RequestOutcome(1, 1, true, false, 200, TimeSpan.Zero, null)], false);
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>()).Returns(report);
+
+        var exitCode = await ExecuteWithRunner(stressTestRunner, ["--config", configPath]);
+
+        Assert.Equal(0, exitCode);
+        await stressTestRunner.Received(1).RunAsync(
+            Arg.Is<StressTestOptions>(o => o.Url == new Uri("https://example.com/orders")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_OverrideConfigCycles_When_CliExplicit()
+    {
+        var configPath = await WriteTempScenarioAsync(
+            """
+            {
+              "url": "https://example.com",
+              "payload": "payload.json",
+              "requests": 1,
+              "interval": "1s",
+              "cycles": 60
+            }
+            """);
+
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        await ExecuteWithRunner(stressTestRunner, ["--config", configPath, "--cycles", "10"]);
+
+        await stressTestRunner.Received(1).RunAsync(
+            Arg.Is<StressTestOptions>(o => o.Cycles == 10),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_NotOverrideConfigCycles_When_CliOmitted()
+    {
+        var configPath = await WriteTempScenarioAsync(
+            """
+            {
+              "url": "https://example.com",
+              "payload": "payload.json",
+              "requests": 1,
+              "interval": "1s",
+              "cycles": 60
+            }
+            """);
+
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        await ExecuteWithRunner(stressTestRunner, ["--config", configPath]);
+
+        await stressTestRunner.Received(1).RunAsync(
+            Arg.Is<StressTestOptions>(o => o.Cycles == 60),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_ReturnExitCodeOne_When_ConfigMissingRequiredFields()
+    {
+        var configPath = await WriteTempScenarioAsync("""{ "url": "https://example.com" }""");
+
+        var exitCode = await ExecuteWithRunner(Substitute.For<IStressTestRunner>(), ["--config", configPath]);
+
+        Assert.Equal(1, exitCode);
+    }
+
+    [Fact]
+    public async Task Should_ReturnExitCodeOne_When_InvalidConfigPath()
+    {
+        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json");
+
+        var exitCode = await ExecuteWithRunner(Substitute.For<IStressTestRunner>(), ["--config", path]);
+
+        Assert.Equal(1, exitCode);
+    }
+
+    private static async Task<string> WriteTempScenarioAsync(string content)
+    {
+        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json");
+        await File.WriteAllTextAsync(path, content, TestCancellation.Token);
+        return path;
     }
 
     private static string[] CreateArgs(string? method = "POST", string? auth = null, string? verbose = null, string? load = null, string? cycles = null, string? batch = null, string? requests = null)

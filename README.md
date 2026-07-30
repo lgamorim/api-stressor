@@ -12,6 +12,7 @@ From the repository root:
 
 ```powershell
 dotnet run --project src/Stressor.App -- `
+  [--config <path-to-scenario.json>] `
   --url <endpoint-url> `
   --payload <path-to-payload.json> `
   --requests <count> `
@@ -54,10 +55,11 @@ When running the built executable:
 
 | Option | Short | Required | Description |
 |--------|-------|----------|-------------|
-| `--url` | `-u` | Yes | Full URL of the API endpoint (must start with `http://` or `https://`) |
-| `--payload` | `-p` | Yes | Path to a JSON payload file (single body or multi-payload envelope) |
-| `--requests` | `-r` | Yes | Number of requests to send per cycle |
-| `--interval` | `-i` | Yes | Delay between consecutive request starts (see formats and load modes below) |
+| `--config` | `-f` | No | Path to a JSON scenario config file (see below) |
+| `--url` | `-u` | Yes* | Full URL of the API endpoint (must start with `http://` or `https://`) |
+| `--payload` | `-p` | Yes* | Path to a JSON payload file (single body or multi-payload envelope) |
+| `--requests` | `-r` | Yes* | Number of requests to send per cycle |
+| `--interval` | `-i` | Yes* | Delay between consecutive request starts (see formats and load modes below) |
 | `--method` | `-m` | No | HTTP method to use (default: `POST`) |
 | `--auth` | `-a` | No | Authorization header value sent with each request (e.g. `Bearer <token>`) |
 | `--load` | `-l` | No | Load handling mode: `gentle-pacing` (default), `fixed-rate`, or `batch` |
@@ -68,6 +70,45 @@ When running the built executable:
 | `--verbose` | `-v` | No | Per-request output mode: `failures` (detail only on errors) or `full` (detail on every request) |
 | `--help` | `-h` | No | Show usage information and exit |
 | `--version` | | No | Print application version and exit |
+
+\* `--url`, `--payload`, `--requests`, and `--interval` are required on the command line unless all are provided by `--config`.
+
+### Scenario config file
+
+Use `--config` to load settings from a JSON file instead of repeating long command lines. CLI flags override values from the config file only when you explicitly pass them.
+
+Example `scenario.json`:
+
+```json
+{
+  "url": "https://api.example.com/orders",
+  "payload": "./payload.json",
+  "method": "POST",
+  "requests": 10,
+  "interval": "1s",
+  "cycles": 60,
+  "auth": "Bearer your-token-here",
+  "verbose": "failures",
+  "load": "gentle-pacing",
+  "batch": 1,
+  "timeout": "100s",
+  "cycleInterval": "0s"
+}
+```
+
+Run with:
+
+```powershell
+dotnet run --project src/Stressor.App -- --config ./scenario.json
+```
+
+Override a single value from the command line:
+
+```powershell
+dotnet run --project src/Stressor.App -- --config ./scenario.json --cycles 10
+```
+
+Property names use camelCase. Duration fields use the same formats as `--interval`. Paths in `payload` are resolved relative to the config file's directory.
 
 ### Supported HTTP methods
 

@@ -9,6 +9,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddStressorCore(this IServiceCollection services)
     {
         services.AddSingleton<IJsonPayloadReader, JsonPayloadReader>();
+        services.AddSingleton<IStressTestScenarioReader, JsonStressTestScenarioReader>();
         services.AddSingleton<IHttpStressTestClient, HttpStressTestClient>();
         services.AddSingleton<IStressTestRunner, StressTestRunner>();
         services.AddSingleton<IConsoleSessionReporter, ConsoleSessionReporter>();

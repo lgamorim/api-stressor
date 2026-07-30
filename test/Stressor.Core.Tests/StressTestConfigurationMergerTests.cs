@@ -1,0 +1,81 @@
+namespace Stressor.Core.Tests;
+
+public class StressTestConfigurationMergerTests
+{
+    [Fact]
+    public void Should_UseConfigValues_When_CliOmitted()
+    {
+        var document = new StressTestScenarioDocument
+        {
+            Url = "https://example.com",
+            Payload = "./payload.json",
+            Method = "PUT",
+            Requests = 10,
+            Interval = "500ms",
+            Cycles = 60,
+            Auth = "Bearer token",
+            Verbose = "failures",
+            Load = "batch",
+            Batch = 5,
+            Timeout = "30s",
+            CycleInterval = "10s"
+        };
+
+        var configPath = Path.Combine(Path.GetTempPath(), "configs", "scenario.json");
+        var merged = StressTestConfigurationMerger.Merge(document, configPath, new StressTestCliOverrides());
+
+        Assert.Equal("https://example.com", merged.Url);
+        Assert.Equal(Path.GetFullPath(Path.Combine(Path.GetDirectoryName(configPath)!, "payload.json")), merged.Payload);
+        Assert.Equal("PUT", merged.Method);
+        Assert.Equal(10, merged.Requests);
+        Assert.Equal("500ms", merged.Interval);
+        Assert.Equal(60, merged.Cycles);
+        Assert.Equal("Bearer token", merged.Auth);
+        Assert.Equal("failures", merged.Verbose);
+        Assert.Equal("batch", merged.Load);
+        Assert.Equal(5, merged.Batch);
+        Assert.Equal("30s", merged.Timeout);
+        Assert.Equal("10s", merged.CycleInterval);
+    }
+
+    [Fact]
+    public void Should_OverrideConfig_When_CliExplicit()
+    {
+        var document = new StressTestScenarioDocument
+        {
+            Url = "https://example.com",
+            Payload = "./payload.json",
+            Requests = 10,
+            Interval = "1s",
+            Cycles = 60
+        };
+
+        var cli = new StressTestCliOverrides
+        {
+            SpecifiedOptions = new HashSet<string> { StressTestConfigurationOptionNames.Cycles },
+            Cycles = 10
+        };
+
+        var configPath = Path.Combine(Path.GetTempPath(), "configs", "scenario.json");
+        var merged = StressTestConfigurationMerger.Merge(document, configPath, cli);
+
+        Assert.Equal(10, merged.Cycles);
+        Assert.Equal("https://example.com", merged.Url);
+    }
+
+    [Fact]
+    public void Should_ResolvePayloadRelativeToConfigDirectory()
+    {
+        var document = new StressTestScenarioDocument
+        {
+            Payload = "./data/payload.json"
+        };
+
+        var configPath = Path.Combine(Path.GetTempPath(), "scenarios", "scenario.json");
+        var merged = StressTestConfigurationMerger.Merge(document, configPath, new StressTestCliOverrides());
+
+        Assert.Equal(
+            Path.GetFullPath(Path.Combine(Path.GetTempPath(), "scenarios", "data", "payload.json")),
+            merged.Payload);
+    }
+}

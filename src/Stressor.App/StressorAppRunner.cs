@@ -85,30 +85,30 @@ public sealed class StressorAppRunner
     {
         var rootCommand = new RootCommand("Stress tests an API endpoint.");
 
-        var urlOption = new Option<string>("--url", "-u")
+        var configOption = new Option<string?>("--config", "-f")
         {
-            Description = "API endpoint URL",
-            Required = true
+            Description = "Path to a JSON scenario config file"
         };
-        var payloadOption = new Option<string>("--payload", "-p")
+        var urlOption = new Option<string?>("--url", "-u")
         {
-            Description = "Path to a JSON payload file (single body or multi-payload envelope)",
-            Required = true
+            Description = "API endpoint URL"
+        };
+        var payloadOption = new Option<string?>("--payload", "-p")
+        {
+            Description = "Path to a JSON payload file (single body or multi-payload envelope)"
         };
         var methodOption = new Option<string>("--method", "-m")
         {
             Description = "HTTP method (default: POST)",
             DefaultValueFactory = _ => "POST"
         };
-        var requestsOption = new Option<int>("--requests", "-r")
+        var requestsOption = new Option<int?>("--requests", "-r")
         {
-            Description = "Requests to send per cycle",
-            Required = true
+            Description = "Requests to send per cycle"
         };
-        var intervalOption = new Option<string>("--interval", "-i")
+        var intervalOption = new Option<string?>("--interval", "-i")
         {
-            Description = "Minimum delay between consecutive request starts (e.g. 1s, 500ms, 00:00:01)",
-            Required = true
+            Description = "Minimum delay between consecutive request starts (e.g. 1s, 500ms, 00:00:01)"
         };
         var cyclesOption = new Option<int>("--cycles", "-c")
         {
@@ -144,6 +144,7 @@ public sealed class StressorAppRunner
             DefaultValueFactory = _ => "0s"
         };
 
+        rootCommand.Options.Add(configOption);
         rootCommand.Options.Add(urlOption);
         rootCommand.Options.Add(payloadOption);
         rootCommand.Options.Add(methodOption);
@@ -159,35 +160,41 @@ public sealed class StressorAppRunner
 
         rootCommand.SetAction(async (parseResult, token) =>
         {
-            var url = parseResult.GetValue(urlOption)
-                ?? throw new InvalidOperationException("URL is required.");
-            var payload = parseResult.GetValue(payloadOption)
-                ?? throw new InvalidOperationException("Payload path is required.");
-            var method = parseResult.GetValue(methodOption)
-                ?? throw new InvalidOperationException("HTTP method is required.");
-            var interval = parseResult.GetValue(intervalOption)
-                ?? throw new InvalidOperationException("Interval is required.");
-            var load = parseResult.GetValue(loadOption)
-                ?? throw new InvalidOperationException("Load mode is required.");
-            var timeout = parseResult.GetValue(timeoutOption)
-                ?? throw new InvalidOperationException("Timeout is required.");
-            var cycleInterval = parseResult.GetValue(cycleIntervalOption)
-                ?? throw new InvalidOperationException("Cycle interval is required.");
+            var configPath = parseResult.GetValue(configOption);
+            StressTestScenarioDocument? document = null;
 
-            return await ExecuteAsync(
-                url,
-                payload,
-                method,
-                parseResult.GetValue(requestsOption),
-                interval,
-                parseResult.GetValue(cyclesOption),
-                parseResult.GetValue(authOption),
-                parseResult.GetValue(verboseOption),
-                load,
-                parseResult.GetValue(batchOption),
-                timeout,
-                cycleInterval,
-                token).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(configPath))
+            {
+                try
+                {
+                    var reader = _serviceProvider.GetRequiredService<IStressTestScenarioReader>();
+                    document = await reader.ReadAsync(configPath, token).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    await Console.Error.WriteLineAsync(ex.Message).ConfigureAwait(false);
+                    return 1;
+                }
+            }
+
+            var cliOverrides = BuildCliOverrides(
+                parseResult,
+                urlOption,
+                payloadOption,
+                methodOption,
+                requestsOption,
+                intervalOption,
+                cyclesOption,
+                authOption,
+                verboseOption,
+                loadOption,
+                batchOption,
+                timeoutOption,
+                cycleIntervalOption);
+
+            var configuration = StressTestConfigurationMerger.Merge(document, configPath, cliOverrides);
+
+            return await ExecuteAsync(configuration, token, _serviceProvider).ConfigureAwait(false);
         });
 
         StressorAppHelp.Configure(rootCommand);
@@ -195,78 +202,116 @@ public sealed class StressorAppRunner
         return rootCommand;
     }
 
+    internal static StressTestCliOverrides BuildCliOverrides(
+        ParseResult parseResult,
+        Option<string?> urlOption,
+        Option<string?> payloadOption,
+        Option<string> methodOption,
+        Option<int?> requestsOption,
+        Option<string?> intervalOption,
+        Option<int> cyclesOption,
+        Option<string?> authOption,
+        Option<string?> verboseOption,
+        Option<string> loadOption,
+        Option<int> batchOption,
+        Option<string> timeoutOption,
+        Option<string> cycleIntervalOption)
+    {
+        var specified = new HashSet<string>();
+
+        if (IsOptionSpecified(parseResult, urlOption))
+        {
+            specified.Add(StressTestConfigurationOptionNames.Url);
+        }
+
+        if (IsOptionSpecified(parseResult, payloadOption))
+        {
+            specified.Add(StressTestConfigurationOptionNames.Payload);
+        }
+
+        if (IsOptionSpecified(parseResult, methodOption))
+        {
+            specified.Add(StressTestConfigurationOptionNames.Method);
+        }
+
+        if (IsOptionSpecified(parseResult, requestsOption))
+        {
+            specified.Add(StressTestConfigurationOptionNames.Requests);
+        }
+
+        if (IsOptionSpecified(parseResult, intervalOption))
+        {
+            specified.Add(StressTestConfigurationOptionNames.Interval);
+        }
+
+        if (IsOptionSpecified(parseResult, cyclesOption))
+        {
+            specified.Add(StressTestConfigurationOptionNames.Cycles);
+        }
+
+        if (IsOptionSpecified(parseResult, authOption))
+        {
+            specified.Add(StressTestConfigurationOptionNames.Auth);
+        }
+
+        if (IsOptionSpecified(parseResult, verboseOption))
+        {
+            specified.Add(StressTestConfigurationOptionNames.Verbose);
+        }
+
+        if (IsOptionSpecified(parseResult, loadOption))
+        {
+            specified.Add(StressTestConfigurationOptionNames.Load);
+        }
+
+        if (IsOptionSpecified(parseResult, batchOption))
+        {
+            specified.Add(StressTestConfigurationOptionNames.Batch);
+        }
+
+        if (IsOptionSpecified(parseResult, timeoutOption))
+        {
+            specified.Add(StressTestConfigurationOptionNames.Timeout);
+        }
+
+        if (IsOptionSpecified(parseResult, cycleIntervalOption))
+        {
+            specified.Add(StressTestConfigurationOptionNames.CycleInterval);
+        }
+
+        return new StressTestCliOverrides
+        {
+            SpecifiedOptions = specified,
+            Url = parseResult.GetValue(urlOption),
+            Payload = parseResult.GetValue(payloadOption),
+            Method = parseResult.GetValue(methodOption),
+            Requests = parseResult.GetValue(requestsOption),
+            Interval = parseResult.GetValue(intervalOption),
+            Cycles = parseResult.GetValue(cyclesOption),
+            Auth = parseResult.GetValue(authOption),
+            Verbose = parseResult.GetValue(verboseOption),
+            Load = parseResult.GetValue(loadOption),
+            Batch = parseResult.GetValue(batchOption),
+            Timeout = parseResult.GetValue(timeoutOption),
+            CycleInterval = parseResult.GetValue(cycleIntervalOption)
+        };
+    }
+
+    internal static bool IsOptionSpecified<T>(ParseResult parseResult, Option<T> option)
+    {
+        var result = parseResult.GetResult(option);
+        return result is not null && !result.Implicit;
+    }
+
     internal static async Task<int> ExecuteAsync(
-        string url,
-        string payloadPath,
-        string method,
-        int requests,
-        string interval,
-        int cycles,
-        string? auth,
-        string? verbose,
-        string load,
-        int batch,
-        string timeout,
-        string cycleInterval,
+        StressTestConfigurationValues configuration,
         CancellationToken cancellationToken,
         IServiceProvider? serviceProviderOverride = null)
     {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        var (options, errors) = StressTestOptionParser.TryCreateOptions(configuration);
+        if (options is null)
         {
-            await Console.Error.WriteLineAsync("URL must be absolute.").ConfigureAwait(false);
-            return 1;
-        }
-
-        if (!TryParseLoadMode(load, out var loadMode))
-        {
-            await Console.Error.WriteLineAsync("Load must be gentle-pacing, fixed-rate, or batch.").ConfigureAwait(false);
-            return 1;
-        }
-
-        if (!TryParseInterval(interval, allowZero: loadMode == LoadMode.Batch, out var intervalSpan))
-        {
-            await Console.Error.WriteLineAsync("Interval must be a valid duration (e.g. 1s, 500ms, 00:00:01).").ConfigureAwait(false);
-            return 1;
-        }
-
-        if (!TryParseInterval(timeout, allowZero: false, out var timeoutSpan))
-        {
-            await Console.Error.WriteLineAsync("Timeout must be a valid duration (e.g. 30s, 500ms, 00:01:40).").ConfigureAwait(false);
-            return 1;
-        }
-
-        if (!TryParseInterval(cycleInterval, allowZero: true, out var cycleIntervalSpan))
-        {
-            await Console.Error.WriteLineAsync("Cycle interval must be a valid duration (e.g. 30s, 500ms, 00:00:30).").ConfigureAwait(false);
-            return 1;
-        }
-
-        if (!TryParseVerboseMode(verbose, out var verboseMode))
-        {
-            await Console.Error.WriteLineAsync("Verbose must be failures or full.").ConfigureAwait(false);
-            return 1;
-        }
-
-        var options = new StressTestOptions(
-            uri,
-            payloadPath,
-            new HttpMethod(method),
-            requests,
-            intervalSpan,
-            cycles,
-            auth,
-            verboseMode,
-            loadMode,
-            batch)
-        {
-            RequestTimeout = timeoutSpan,
-            CycleInterval = cycleIntervalSpan
-        };
-
-        var validationErrors = StressTestOptionsValidator.Validate(options);
-        if (validationErrors.Count > 0)
-        {
-            foreach (var error in validationErrors)
+            foreach (var error in errors)
             {
                 await Console.Error.WriteLineAsync(error).ConfigureAwait(false);
             }
@@ -274,6 +319,14 @@ public sealed class StressorAppRunner
             return 1;
         }
 
+        return await ExecuteAsync(options, cancellationToken, serviceProviderOverride).ConfigureAwait(false);
+    }
+
+    internal static async Task<int> ExecuteAsync(
+        StressTestOptions options,
+        CancellationToken cancellationToken,
+        IServiceProvider? serviceProviderOverride = null)
+    {
         var provider = serviceProviderOverride ?? throw new InvalidOperationException("Service provider is required.");
         var runner = provider.GetRequiredService<IStressTestRunner>();
 
@@ -289,38 +342,6 @@ public sealed class StressorAppRunner
         }
     }
 
-    private async Task<int> ExecuteAsync(
-        string url,
-        string payloadPath,
-        string method,
-        int requests,
-        string interval,
-        int cycles,
-        string? auth,
-        string? verbose,
-        string load,
-        int batch,
-        string timeout,
-        string cycleInterval,
-        CancellationToken cancellationToken)
-    {
-        return await ExecuteAsync(
-            url,
-            payloadPath,
-            method,
-            requests,
-            interval,
-            cycles,
-            auth,
-            verbose,
-            load,
-            batch,
-            timeout,
-            cycleInterval,
-            cancellationToken,
-            _serviceProvider).ConfigureAwait(false);
-    }
-
     internal static int MapExitCode(SessionReport report)
     {
         if (report.WasCancelled)
@@ -329,81 +350,5 @@ public sealed class StressorAppRunner
         }
 
         return report.FailedCount == 0 ? 0 : 1;
-    }
-
-    internal static bool TryParseInterval(string value, bool allowZero, out TimeSpan interval)
-    {
-        if (TimeSpan.TryParse(value, out interval))
-        {
-            return allowZero ? interval >= TimeSpan.Zero : interval > TimeSpan.Zero;
-        }
-
-        if (value.EndsWith("ms", StringComparison.OrdinalIgnoreCase)
-            && double.TryParse(value[..^2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var milliseconds))
-        {
-            interval = TimeSpan.FromMilliseconds(milliseconds);
-            return allowZero ? interval >= TimeSpan.Zero : interval > TimeSpan.Zero;
-        }
-
-        if (value.EndsWith('s') && !value.EndsWith("ms", StringComparison.OrdinalIgnoreCase)
-            && double.TryParse(value[..^1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var seconds))
-        {
-            interval = TimeSpan.FromSeconds(seconds);
-            return allowZero ? interval >= TimeSpan.Zero : interval > TimeSpan.Zero;
-        }
-
-        interval = default;
-        return false;
-    }
-
-    internal static bool TryParseInterval(string value, out TimeSpan interval) =>
-        TryParseInterval(value, allowZero: false, out interval);
-
-    internal static bool TryParseLoadMode(string value, out LoadMode loadMode)
-    {
-        if (string.Equals(value, "gentle-pacing", StringComparison.OrdinalIgnoreCase))
-        {
-            loadMode = LoadMode.GentlePacing;
-            return true;
-        }
-
-        if (string.Equals(value, "fixed-rate", StringComparison.OrdinalIgnoreCase))
-        {
-            loadMode = LoadMode.FixedRate;
-            return true;
-        }
-
-        if (string.Equals(value, "batch", StringComparison.OrdinalIgnoreCase))
-        {
-            loadMode = LoadMode.Batch;
-            return true;
-        }
-
-        loadMode = default;
-        return false;
-    }
-
-    internal static bool TryParseVerboseMode(string? value, out VerboseMode verboseMode)
-    {
-        if (value is null)
-        {
-            verboseMode = VerboseMode.Off;
-            return true;
-        }
-
-        if (string.Equals(value, "failures", StringComparison.OrdinalIgnoreCase))
-        {
-            verboseMode = VerboseMode.Failures;
-            return true;
-        }
-
-        if (string.Equals(value, "full", StringComparison.OrdinalIgnoreCase))
-        {
-            verboseMode = VerboseMode.Full;
-            return true;
-        }
-
-        verboseMode = VerboseMode.Off;
-        return false;
     }
 }
