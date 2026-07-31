@@ -2,11 +2,35 @@
 
 A command-line tool for stress testing HTTP API endpoints. It sends repeated requests at a configurable rate using a JSON payload file, then reports success, failure, and response-time statistics.
 
-## Prerequisites
+## Installation
+
+Download the latest release for your platform from [GitHub Releases](https://github.com/lgamorim/api-stressor/releases):
+
+| Platform | Archive |
+|----------|---------|
+| Windows x64 | `stressor-{version}-win-x64.zip` |
+| Linux x64 | `stressor-{version}-linux-x64.zip` |
+
+Extract the zip and run the executable. Self-contained builds include the .NET runtime — you do not need the SDK installed on the target machine.
+
+```powershell
+# Windows
+./stressor.exe --help
+```
+
+```bash
+# Linux
+chmod +x stressor
+./stressor --help
+```
+
+## Running from source
+
+### Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download) or later
 
-## Running the app
+### Running the app
 
 From the repository root:
 
@@ -35,7 +59,7 @@ You can also build and run the executable directly:
 
 ```powershell
 dotnet build src/Stressor.App
-./src/Stressor.App/bin/Debug/net10.0/Stressor.App.exe --url ... --payload ... --requests ... --interval ...
+./src/Stressor.App/bin/Debug/net10.0/stressor.exe --url ... --payload ... --requests ... --interval ...
 ```
 
 ## Getting help
@@ -52,7 +76,7 @@ dotnet run --project src/Stressor.App -- --version
 When running the built executable:
 
 ```powershell
-./src/Stressor.App/bin/Debug/net10.0/Stressor.App.exe --help
+./src/Stressor.App/bin/Debug/net10.0/stressor.exe --help
 ```
 
 ## Command-line options

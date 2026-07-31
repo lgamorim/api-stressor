@@ -14,7 +14,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+            executable: artifacts/publish/stressor
+          - os: windows-latest
+            rid: win-x64
+            executable: artifacts/publish/stressor.exe
 
     steps:
       - uses: actions/checkout@v4
@@ -36,3 +42,14 @@ jobs:
 
       - name: Test
         run: dotnet test Stressor.slnx -c Release --no-build --verbosity normal
+
+      - name: Publish smoke
+        shell: bash
+        run: |
+          dotnet publish src/Stressor.App/Stressor.App.csproj -c Release -r ${{ matrix.rid }} -o artifacts/publish
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            artifacts/publish/stressor.exe --version
+          else
+            chmod +x artifacts/publish/stressor
+            artifacts/publish/stressor --version
+          fi

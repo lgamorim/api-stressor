@@ -15,7 +15,7 @@ public class SessionReportMapperTests
         };
         var report = new SessionReport(options, outcomes, false);
 
-        var document = SessionReportMapper.ToDocument(report, 1, "0.10.0-alpha", CompletedAt);
+        var document = SessionReportMapper.ToDocument(report, 1, "0.11.0-alpha", CompletedAt);
 
         Assert.Equal(2, document.Summary.TotalRequests);
         Assert.Equal(1, document.Summary.Succeeded);
@@ -35,7 +35,7 @@ public class SessionReportMapperTests
         };
         var report = new SessionReport(options, outcomes, false);
 
-        var document = SessionReportMapper.ToDocument(report, 0, "0.10.0-alpha", CompletedAt);
+        var document = SessionReportMapper.ToDocument(report, 0, "0.11.0-alpha", CompletedAt);
 
         Assert.NotNull(document.Summary.LatencyMs);
         Assert.Equal(30, document.Summary.LatencyMs.Min);
@@ -53,7 +53,7 @@ public class SessionReportMapperTests
         };
         var report = new SessionReport(options, outcomes, false);
 
-        var document = SessionReportMapper.ToDocument(report, 1, "0.10.0-alpha", CompletedAt);
+        var document = SessionReportMapper.ToDocument(report, 1, "0.11.0-alpha", CompletedAt);
 
         Assert.Null(document.Summary.LatencyMs);
     }
@@ -69,7 +69,7 @@ public class SessionReportMapperTests
         };
         var report = new SessionReport(options, [], false);
 
-        var document = SessionReportMapper.ToDocument(report, 0, "0.10.0-alpha", CompletedAt);
+        var document = SessionReportMapper.ToDocument(report, 0, "0.11.0-alpha", CompletedAt);
 
         Assert.True(document.Configuration.AuthConfigured);
         Assert.Equal(1, document.Configuration.HeadersCount);
@@ -88,7 +88,7 @@ public class SessionReportMapperTests
         };
         var report = new SessionReport(options, outcomes, false);
 
-        var document = SessionReportMapper.ToDocument(report, 0, "0.10.0-alpha", CompletedAt);
+        var document = SessionReportMapper.ToDocument(report, 0, "0.11.0-alpha", CompletedAt);
 
         Assert.Equal(1, document.Outcomes[0].SessionIndex);
         Assert.Equal(2, document.Outcomes[1].SessionIndex);

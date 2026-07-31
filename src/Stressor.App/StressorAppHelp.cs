@@ -39,6 +39,8 @@ public static class StressorAppHelp
     public static void WriteUsageGuide(TextWriter output)
     {
         output.WriteLine();
+        output.WriteLine("Pre-built binaries: https://github.com/lgamorim/api-stressor/releases");
+        output.WriteLine();
         output.WriteLine("Examples:");
         output.WriteLine("  Stressor.App --url https://api.example.com/orders --payload ./payload.json \\");
         output.WriteLine("    --requests 10 --interval 1s");

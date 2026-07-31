@@ -235,7 +235,7 @@ public class StressorAppRunnerTests
             var exitCode = await new StressorAppRunner(CreateProvider()).RunAsync(["--version"], TestCancellation.Token);
 
             Assert.Equal(0, exitCode);
-            Assert.Contains("0.10.0-alpha", writer.ToString(), StringComparison.Ordinal);
+            Assert.Contains("0.11.0-alpha", writer.ToString(), StringComparison.Ordinal);
         }
         finally
         {
