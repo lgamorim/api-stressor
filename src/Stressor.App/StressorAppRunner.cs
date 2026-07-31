@@ -127,6 +127,10 @@ public sealed class StressorAppRunner
         {
             Description = "Path to a JSON file of HTTP headers"
         };
+        var expectStatusOption = new Option<string[]>("--expect-status")
+        {
+            Description = "HTTP status code that counts as success (repeatable; comma-separated allowed)"
+        };
         var verboseOption = new Option<string?>("--verbose", "-v")
         {
             Description = "Per-request output mode: failures or full"
@@ -161,6 +165,7 @@ public sealed class StressorAppRunner
         rootCommand.Options.Add(authOption);
         rootCommand.Options.Add(headerOption);
         rootCommand.Options.Add(headersFileOption);
+        rootCommand.Options.Add(expectStatusOption);
         rootCommand.Options.Add(verboseOption);
         rootCommand.Options.Add(loadOption);
         rootCommand.Options.Add(batchOption);
@@ -198,6 +203,7 @@ public sealed class StressorAppRunner
                 authOption,
                 headerOption,
                 headersFileOption,
+                expectStatusOption,
                 verboseOption,
                 loadOption,
                 batchOption,
@@ -209,6 +215,7 @@ public sealed class StressorAppRunner
             try
             {
                 configuration = await ApplyHeaderLayersAsync(configuration, cliOverrides, token).ConfigureAwait(false);
+                configuration = ApplyExpectStatusOverride(configuration, cliOverrides);
             }
             catch (Exception ex)
             {
@@ -258,6 +265,23 @@ public sealed class StressorAppRunner
         return configuration with { Headers = headers };
     }
 
+    internal static StressTestConfigurationValues ApplyExpectStatusOverride(
+        StressTestConfigurationValues configuration,
+        StressTestCliOverrides cliOverrides)
+    {
+        if (!cliOverrides.IsSpecified(StressTestConfigurationOptionNames.ExpectStatus))
+        {
+            return configuration;
+        }
+
+        if (!ExpectedStatusCodeParser.TryParseMany(cliOverrides.ExpectStatus, out var codes, out var error))
+        {
+            throw new ArgumentException(error);
+        }
+
+        return configuration with { ExpectStatus = codes };
+    }
+
     internal static StressTestCliOverrides BuildCliOverrides(
         ParseResult parseResult,
         Option<string?> urlOption,
@@ -269,6 +293,7 @@ public sealed class StressorAppRunner
         Option<string?> authOption,
         Option<string[]> headerOption,
         Option<string?> headersFileOption,
+        Option<string[]> expectStatusOption,
         Option<string?> verboseOption,
         Option<string> loadOption,
         Option<int> batchOption,
@@ -322,6 +347,11 @@ public sealed class StressorAppRunner
             specified.Add(StressTestConfigurationOptionNames.HeadersFile);
         }
 
+        if (IsOptionSpecified(parseResult, expectStatusOption))
+        {
+            specified.Add(StressTestConfigurationOptionNames.ExpectStatus);
+        }
+
         if (IsOptionSpecified(parseResult, verboseOption))
         {
             specified.Add(StressTestConfigurationOptionNames.Verbose);
@@ -359,6 +389,7 @@ public sealed class StressorAppRunner
             Auth = parseResult.GetValue(authOption),
             HeadersFile = parseResult.GetValue(headersFileOption),
             Header = parseResult.GetValue(headerOption) ?? [],
+            ExpectStatus = parseResult.GetValue(expectStatusOption) ?? [],
             Verbose = parseResult.GetValue(verboseOption),
             Load = parseResult.GetValue(loadOption),
             Batch = parseResult.GetValue(batchOption),

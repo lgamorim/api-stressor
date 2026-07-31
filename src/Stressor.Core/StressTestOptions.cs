@@ -20,6 +20,9 @@ public sealed record StressTestOptions(
     public IReadOnlyDictionary<string, string> Headers { get; init; } =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>HTTP status codes that count as success. Empty means default 2xx.</summary>
+    public IReadOnlySet<int> ExpectedStatusCodes { get; init; } = new HashSet<int>();
+
     /// <summary>Maximum time to wait for a single HTTP response.</summary>
     public TimeSpan RequestTimeout { get; init; } = DefaultRequestTimeout;
 

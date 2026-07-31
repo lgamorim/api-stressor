@@ -27,6 +27,9 @@ public sealed record StressTestScenarioDocument
     /// <summary>Custom HTTP headers.</summary>
     public Dictionary<string, string>? Headers { get; init; }
 
+    /// <summary>HTTP status codes that count as success.</summary>
+    public int[]? ExpectStatus { get; init; }
+
     /// <summary>Per-request output mode: failures or full.</summary>
     public string? Verbose { get; init; }
 

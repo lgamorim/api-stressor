@@ -30,6 +30,9 @@ public static class StressTestConfigurationOptionNames
     /// <summary>Header option name.</summary>
     public const string Header = "header";
 
+    /// <summary>Expect status option name.</summary>
+    public const string ExpectStatus = "expectStatus";
+
     /// <summary>Verbose option name.</summary>
     public const string Verbose = "verbose";
 

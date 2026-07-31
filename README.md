@@ -21,6 +21,7 @@ dotnet run --project src/Stressor.App -- `
   [--auth <authorization-header-value>] `
   [--header <name-value>] `
   [--headers <path-to-headers.json>] `
+  [--expect-status <code>] `
   [--load <gentle-pacing|fixed-rate|batch>] `
   [--batch <count>] `
   [--timeout <duration>] `
@@ -66,6 +67,7 @@ When running the built executable:
 | `--auth` | `-a` | No | Authorization header value sent with each request (e.g. `Bearer <token>`) |
 | `--header` | `-H` | No | Request header in `Name: Value` format (repeatable) |
 | `--headers` | | No | Path to a JSON file of HTTP header name/value pairs |
+| `--expect-status` | | No | HTTP status code that counts as success (repeatable; comma-separated allowed) |
 | `--load` | `-l` | No | Load handling mode: `gentle-pacing` (default), `fixed-rate`, or `batch` |
 | `--batch` | `-b` | No | Max parallel requests per wave (default: `1`; use with `--load batch`) |
 | `--timeout` | `-t` | No | Per-request timeout (default: `100s`; same formats as `--interval`) |
@@ -96,6 +98,7 @@ Example `scenario.json`:
     "X-Tenant-Id": "acme",
     "Accept": "application/json"
   },
+  "expectStatus": [200, 201, 204],
   "verbose": "failures",
   "load": "gentle-pacing",
   "batch": 1,
@@ -154,6 +157,17 @@ Headers file example (`extra-headers.json`):
 Merge precedence (lowest to highest): scenario `headers` → `--headers` file → each `--header` → `--auth` (which sets `Authorization` last).
 
 For body-bearing methods, a `Content-Type` header overrides the default `application/json` body type.
+
+### Expected status codes
+
+By default, any **2xx** response counts as success. Use `--expect-status` (repeatable) or `expectStatus` in the scenario config to define a custom set of success codes.
+
+```powershell
+--expect-status 200 `
+--expect-status 201,204
+```
+
+Explicit CLI flags replace the config list when provided. Status codes must be integers from 100 to 599. This is useful for strict contract tests (only `200`) or negative-path checks where a specific `4xx` is the expected outcome.
 
 ### Interval formats
 
@@ -359,7 +373,7 @@ Session complete
   Latency:   min 32ms  avg 47ms  max 210ms  p50 45ms  p95 180ms  p99 205ms
 ```
 
-- **OK** — requests that returned a successful HTTP status (2xx)
+- **OK** — requests that matched the expected HTTP status (default: any 2xx)
 - **Fail** — requests that returned an error status or could not complete
 - **Avg** — average response time for successful requests in that cycle
 - **Auth: configured** — shown when `--auth` was provided (the token itself is not printed)

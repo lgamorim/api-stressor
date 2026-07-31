@@ -35,7 +35,11 @@ public sealed class HttpStressTestClient : IHttpStressTestClient
             using var response = await client.SendAsync(request, requestCts.Token).ConfigureAwait(false);
             stopwatch.Stop();
 
-            if (response.IsSuccessStatusCode)
+            var statusCode = (int)response.StatusCode;
+            var isSuccess = HttpStatusCodeEvaluator.IsSuccess(statusCode, options.ExpectedStatusCodes);
+            var expectedStatusCodes = options.ExpectedStatusCodes.Count > 0 ? options.ExpectedStatusCodes : null;
+
+            if (isSuccess)
             {
                 string? responseBody = null;
                 if (options.Verbose == VerboseMode.Full)
@@ -48,7 +52,7 @@ public sealed class HttpStressTestClient : IHttpStressTestClient
                     requestNumber,
                     true,
                     false,
-                    (int)response.StatusCode,
+                    statusCode,
                     stopwatch.Elapsed,
                     null,
                     responseBody);
@@ -59,7 +63,10 @@ public sealed class HttpStressTestClient : IHttpStressTestClient
 
             if (options.Verbose == VerboseMode.Off)
             {
-                errorMessage = await RequestFailureFormatter.FormatHttpErrorAsync(response, cancellationToken)
+                errorMessage = await RequestFailureFormatter.FormatHttpErrorAsync(
+                        response,
+                        cancellationToken,
+                        expectedStatusCodes)
                     .ConfigureAwait(false);
             }
             else
@@ -73,7 +80,8 @@ public sealed class HttpStressTestClient : IHttpStressTestClient
                     response.StatusCode,
                     response.ReasonPhrase,
                     body,
-                    mediaType);
+                    mediaType,
+                    expectedStatusCodes);
             }
 
             return new RequestOutcome(
@@ -81,7 +89,7 @@ public sealed class HttpStressTestClient : IHttpStressTestClient
                 requestNumber,
                 false,
                 false,
-                (int)response.StatusCode,
+                statusCode,
                 stopwatch.Elapsed,
                 errorMessage,
                 responseBodyOnError);

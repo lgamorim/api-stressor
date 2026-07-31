@@ -98,6 +98,14 @@ public static class StressTestOptionsValidator
             }
         }
 
+        foreach (var statusCode in options.ExpectedStatusCodes)
+        {
+            if (statusCode is < 100 or > 599)
+            {
+                errors.Add($"Status code '{statusCode}' is invalid. Use integers from 100 to 599.");
+            }
+        }
+
         return errors;
     }
 }

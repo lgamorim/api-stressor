@@ -37,6 +37,14 @@ public sealed class ConsoleSessionReporter : IConsoleSessionReporter
             _output.WriteLine($"  Headers:  {options.Headers.Count.ToString(CultureInfo.InvariantCulture)} configured");
         }
 
+        if (options.ExpectedStatusCodes.Count > 0)
+        {
+            var codes = string.Join(
+                ", ",
+                options.ExpectedStatusCodes.OrderBy(code => code).Select(code => code.ToString(CultureInfo.InvariantCulture)));
+            _output.WriteLine($"  Expected: {codes}");
+        }
+
         if (options.Load == LoadMode.Batch)
         {
             _output.WriteLine($"  Rate:     {options.RequestsPerInterval.ToString(CultureInfo.InvariantCulture)} requests/cycle, batch {options.Batch.ToString(CultureInfo.InvariantCulture)}, {FormatInterval(options.Interval)} between wave starts");

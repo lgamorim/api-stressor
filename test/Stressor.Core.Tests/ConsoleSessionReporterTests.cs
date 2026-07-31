@@ -102,6 +102,21 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
+    public void Should_ShowExpectedStatusCodes_When_Configured()
+    {
+        var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var reporter = new ConsoleSessionReporter(writer);
+        var options = CreateOptions() with
+        {
+            ExpectedStatusCodes = new HashSet<int> { 201, 200, 204 }
+        };
+
+        reporter.WriteSessionStart(options);
+
+        Assert.Contains("Expected: 200, 201, 204", writer.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Should_ShowHeadersCount_When_HeadersConfigured()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);

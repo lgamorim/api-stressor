@@ -68,6 +68,12 @@ public static class StressorAppHelp
         output.WriteLine("  Precedence: config headers, --headers file, --header flags, then --auth for Authorization.");
         output.WriteLine("  Content-Type in headers overrides the default application/json body type.");
         output.WriteLine();
+        output.WriteLine("Expected status codes:");
+        output.WriteLine("  --expect-status <code> (repeatable) defines which HTTP status codes count as success.");
+        output.WriteLine("  Each flag accepts one code or a comma-separated list (e.g. 200,201).");
+        output.WriteLine("  Scenario config may include expectStatus as an array of integers.");
+        output.WriteLine("  When omitted, any 2xx response counts as success.");
+        output.WriteLine();
         output.WriteLine("Payload file:");
         output.WriteLine("  Single body: any JSON value sent unchanged on every request.");
         output.WriteLine("  Multi-payload: root object with only a \"payloads\" array; items rotate");

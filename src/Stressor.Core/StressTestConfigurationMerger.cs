@@ -28,6 +28,9 @@ public static class StressTestConfigurationMerger
                 Headers = document.Headers is null
                     ? values.Headers
                     : HttpHeadersMerger.Merge(values.Headers, document.Headers),
+                ExpectStatus = document.ExpectStatus is null
+                    ? values.ExpectStatus
+                    : new HashSet<int>(document.ExpectStatus),
                 Verbose = document.Verbose,
                 Load = document.Load ?? values.Load,
                 Batch = document.Batch ?? values.Batch,

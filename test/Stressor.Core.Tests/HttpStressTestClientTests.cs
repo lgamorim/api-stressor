@@ -143,6 +143,83 @@ public class HttpStressTestClientTests
     }
 
     [Fact]
+    public async Task Should_TreatTwoHundredAsSuccess_When_NoExpectedStatusConfigured()
+    {
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
+        var client = CreateClient(handler);
+
+        var outcome = await client.SendAsync(CreateOptions(HttpMethod.Post), "{}", 1, 1, TestCancellation.Token);
+
+        Assert.True(outcome.IsSuccess);
+        Assert.Equal(200, outcome.StatusCode);
+    }
+
+    [Fact]
+    public async Task Should_TreatConfiguredCodeAsSuccess_When_StatusMatches()
+    {
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.Created));
+        var client = CreateClient(handler);
+        var options = CreateOptions(HttpMethod.Post) with
+        {
+            ExpectedStatusCodes = new HashSet<int> { 201 }
+        };
+
+        var outcome = await client.SendAsync(options, "{}", 1, 1, TestCancellation.Token);
+
+        Assert.True(outcome.IsSuccess);
+        Assert.Equal(201, outcome.StatusCode);
+    }
+
+    [Fact]
+    public async Task Should_TreatResponseAsFailure_When_StatusNotInExpectedSet()
+    {
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.Created));
+        var client = CreateClient(handler);
+        var options = CreateOptions(HttpMethod.Post) with
+        {
+            ExpectedStatusCodes = new HashSet<int> { 200 }
+        };
+
+        var outcome = await client.SendAsync(options, "{}", 1, 1, TestCancellation.Token);
+
+        Assert.False(outcome.IsSuccess);
+        Assert.Equal(201, outcome.StatusCode);
+        Assert.Contains("expected 200", outcome.ErrorMessage, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Should_TreatFourHundredAsSuccess_When_ConfiguredAsExpected()
+    {
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
+        var client = CreateClient(handler);
+        var options = CreateOptions(HttpMethod.Post) with
+        {
+            ExpectedStatusCodes = new HashSet<int> { 404 }
+        };
+
+        var outcome = await client.SendAsync(options, "{}", 1, 1, TestCancellation.Token);
+
+        Assert.True(outcome.IsSuccess);
+        Assert.Equal(404, outcome.StatusCode);
+    }
+
+    [Fact]
+    public async Task Should_IncludeExpectedCodesInError_When_StatusMismatch()
+    {
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
+        var client = CreateClient(handler);
+        var options = CreateOptions(HttpMethod.Post) with
+        {
+            ExpectedStatusCodes = new HashSet<int> { 200, 201 }
+        };
+
+        var outcome = await client.SendAsync(options, "{}", 1, 1, TestCancellation.Token);
+
+        Assert.False(outcome.IsSuccess);
+        Assert.Contains("expected 200 or 201", outcome.ErrorMessage, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Should_SendCustomHeader_When_HeadersProvided()
     {
         var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));

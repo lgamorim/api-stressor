@@ -28,6 +28,9 @@ public sealed record StressTestConfigurationValues
     public IReadOnlyDictionary<string, string> Headers { get; init; } =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>HTTP status codes that count as success.</summary>
+    public IReadOnlySet<int> ExpectStatus { get; init; } = new HashSet<int>();
+
     /// <summary>Per-request output mode.</summary>
     public string? Verbose { get; init; }
 

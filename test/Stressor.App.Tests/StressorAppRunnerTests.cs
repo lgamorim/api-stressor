@@ -235,7 +235,7 @@ public class StressorAppRunnerTests
             var exitCode = await new StressorAppRunner(CreateProvider()).RunAsync(["--version"], TestCancellation.Token);
 
             Assert.Equal(0, exitCode);
-            Assert.Contains("0.8.0-alpha", writer.ToString(), StringComparison.Ordinal);
+            Assert.Contains("0.9.0-alpha", writer.ToString(), StringComparison.Ordinal);
         }
         finally
         {
@@ -1284,6 +1284,93 @@ public class StressorAppRunnerTests
         await stressTestRunner.Received(1).RunAsync(
             Arg.Is<StressTestOptions>(o => o.Headers.ContainsKey("X-Api-Key") && o.Headers["X-Api-Key"] == "from-cli"),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_UseExpectedStatus_When_ExpectStatusFlagProvided()
+    {
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        await ExecuteWithRunner(
+            stressTestRunner,
+            [.. CreateArgs(), "--expect-status", "201"]);
+
+        await stressTestRunner.Received(1).RunAsync(
+            Arg.Is<StressTestOptions>(o => o.ExpectedStatusCodes.Contains(201)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_ParseCommaSeparatedExpectStatus_When_SingleFlag()
+    {
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        await ExecuteWithRunner(
+            stressTestRunner,
+            [.. CreateArgs(), "--expect-status", "200,201"]);
+
+        await stressTestRunner.Received(1).RunAsync(
+            Arg.Is<StressTestOptions>(o => o.ExpectedStatusCodes.Contains(200) && o.ExpectedStatusCodes.Contains(201)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_ReturnExitCodeOne_When_InvalidExpectStatus()
+    {
+        var exitCode = await ExecuteWithRunner(
+            Substitute.For<IStressTestRunner>(),
+            [.. CreateArgs(), "--expect-status", "not-a-code"]);
+
+        Assert.Equal(1, exitCode);
+    }
+
+    [Fact]
+    public async Task Should_OverrideConfigExpectStatus_When_CliExplicit()
+    {
+        var configPath = await WriteTempScenarioAsync(
+            """
+            {
+              "url": "https://example.com",
+              "payload": "payload.json",
+              "requests": 1,
+              "interval": "1s",
+              "expectStatus": [200]
+            }
+            """);
+
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        await ExecuteWithRunner(
+            stressTestRunner,
+            ["--config", configPath, "--expect-status", "201"]);
+
+        await stressTestRunner.Received(1).RunAsync(
+            Arg.Is<StressTestOptions>(o => o.ExpectedStatusCodes.SetEquals(new HashSet<int> { 201 })),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_ReturnExitCodeOne_When_ResponseStatusMismatch()
+    {
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        var options = CreateOptions() with { ExpectedStatusCodes = new HashSet<int> { 200 } };
+        var report = new SessionReport(
+            options,
+            [new RequestOutcome(1, 1, false, false, 201, TimeSpan.Zero, "HTTP 201 Created — expected 200")],
+            false);
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>()).Returns(report);
+
+        var exitCode = await ExecuteWithRunner(
+            stressTestRunner,
+            [.. CreateArgs(), "--expect-status", "200"]);
+
+        Assert.Equal(1, exitCode);
     }
 
     private static async Task<string> WriteTempHeadersAsync(string content)

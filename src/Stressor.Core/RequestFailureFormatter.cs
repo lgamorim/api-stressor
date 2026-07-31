@@ -10,26 +10,45 @@ internal static partial class RequestFailureFormatter
 
     internal static async Task<string> FormatHttpErrorAsync(
         HttpResponseMessage response,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlySet<int>? expectedStatusCodes = null)
     {
-        var mediaType = response.Content.Headers.ContentType?.MediaType;
+        var mediaType = response.Content?.Headers.ContentType?.MediaType;
         var body = response.Content is null
             ? null
             : await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
-        return FormatHttpError(response.StatusCode, response.ReasonPhrase, body, mediaType);
+        return FormatHttpError(response.StatusCode, response.ReasonPhrase, body, mediaType, expectedStatusCodes);
     }
 
     internal static string FormatHttpError(
         HttpStatusCode statusCode,
         string? reasonPhrase,
         string? body,
-        string? mediaType)
+        string? mediaType,
+        IReadOnlySet<int>? expectedStatusCodes = null)
     {
         var summary = $"HTTP {(int)statusCode} {reasonPhrase}";
+        if (expectedStatusCodes is { Count: > 0 })
+        {
+            summary = $"{summary} — {FormatExpectedStatusCodes(expectedStatusCodes)}";
+        }
+
         var bodySummary = SummarizeBody(body, mediaType);
 
         return bodySummary is null ? summary : $"{summary} — {bodySummary}";
+    }
+
+    internal static string FormatExpectedStatusCodes(IReadOnlySet<int> expectedStatusCodes)
+    {
+        var sorted = expectedStatusCodes.OrderBy(code => code).Select(code => code.ToString()).ToList();
+        return sorted.Count switch
+        {
+            0 => string.Empty,
+            1 => $"expected {sorted[0]}",
+            2 => $"expected {sorted[0]} or {sorted[1]}",
+            _ => $"expected {string.Join(", ", sorted[..^1])} or {sorted[^1]}"
+        };
     }
 
     internal static string FormatException(Exception exception)

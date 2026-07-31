@@ -3,6 +3,19 @@ namespace Stressor.Core.Tests;
 public class StressTestConfigurationMergerTests
 {
     [Fact]
+    public void Should_MergeConfigExpectStatus_When_DocumentProvidesExpectStatus()
+    {
+        var document = new StressTestScenarioDocument
+        {
+            ExpectStatus = [200, 201]
+        };
+
+        var merged = StressTestConfigurationMerger.Merge(document, null, new StressTestCliOverrides());
+
+        Assert.Equal([200, 201], merged.ExpectStatus.OrderBy(code => code));
+    }
+
+    [Fact]
     public void Should_MergeConfigHeaders_When_DocumentProvidesHeaders()
     {
         var document = new StressTestScenarioDocument

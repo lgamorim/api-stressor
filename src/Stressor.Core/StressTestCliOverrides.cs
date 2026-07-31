@@ -33,6 +33,9 @@ public sealed record StressTestCliOverrides
     /// <summary>Header strings from repeatable --header flags.</summary>
     public IReadOnlyList<string> Header { get; init; } = [];
 
+    /// <summary>Expected status code strings from repeatable --expect-status flags.</summary>
+    public IReadOnlyList<string> ExpectStatus { get; init; } = [];
+
     /// <summary>Verbose mode from the CLI.</summary>
     public string? Verbose { get; init; }
 
