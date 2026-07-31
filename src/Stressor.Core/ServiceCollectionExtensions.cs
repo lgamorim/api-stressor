@@ -14,6 +14,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IHttpStressTestClient, HttpStressTestClient>();
         services.AddSingleton<IStressTestRunner, StressTestRunner>();
         services.AddSingleton<IConsoleSessionReporter, ConsoleSessionReporter>();
+        services.AddSingleton<IJsonSessionReportWriter, JsonSessionReportWriter>();
         services.AddSingleton(TimeProvider.System);
         return services;
     }

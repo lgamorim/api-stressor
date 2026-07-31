@@ -74,6 +74,11 @@ public static class StressorAppHelp
         output.WriteLine("  Scenario config may include expectStatus as an array of integers.");
         output.WriteLine("  When omitted, any 2xx response counts as success.");
         output.WriteLine();
+        output.WriteLine("JSON report:");
+        output.WriteLine("  --report <file.json> writes a machine-readable session report after completion.");
+        output.WriteLine("  Scenario config may include report with the output file path.");
+        output.WriteLine("  Reports include summary stats and per-request outcomes; secrets are not included.");
+        output.WriteLine();
         output.WriteLine("Payload file:");
         output.WriteLine("  Single body: any JSON value sent unchanged on every request.");
         output.WriteLine("  Multi-payload: root object with only a \"payloads\" array; items rotate");

@@ -51,6 +51,9 @@ public sealed record StressTestCliOverrides
     /// <summary>Cycle interval from the CLI.</summary>
     public string? CycleInterval { get; init; }
 
+    /// <summary>Report file path from the CLI.</summary>
+    public string? Report { get; init; }
+
     /// <summary>Returns whether the named option was explicitly specified on the command line.</summary>
     public bool IsSpecified(string optionName) => SpecifiedOptions.Contains(optionName);
 }

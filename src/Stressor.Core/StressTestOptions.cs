@@ -23,6 +23,9 @@ public sealed record StressTestOptions(
     /// <summary>HTTP status codes that count as success. Empty means default 2xx.</summary>
     public IReadOnlySet<int> ExpectedStatusCodes { get; init; } = new HashSet<int>();
 
+    /// <summary>Path to write a JSON session report after completion.</summary>
+    public string? ReportFilePath { get; init; }
+
     /// <summary>Maximum time to wait for a single HTTP response.</summary>
     public TimeSpan RequestTimeout { get; init; } = DefaultRequestTimeout;
 

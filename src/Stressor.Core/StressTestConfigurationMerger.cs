@@ -35,7 +35,8 @@ public static class StressTestConfigurationMerger
                 Load = document.Load ?? values.Load,
                 Batch = document.Batch ?? values.Batch,
                 Timeout = document.Timeout ?? values.Timeout,
-                CycleInterval = document.CycleInterval ?? values.CycleInterval
+                CycleInterval = document.CycleInterval ?? values.CycleInterval,
+                Report = ResolveConfigRelativePath(document.Report, configFilePath, fromConfig: true)
             };
         }
 
@@ -99,27 +100,35 @@ public static class StressTestConfigurationMerger
             values = values with { CycleInterval = cli.CycleInterval };
         }
 
+        if (cli.IsSpecified(StressTestConfigurationOptionNames.Report) && cli.Report is not null)
+        {
+            values = values with { Report = ResolveConfigRelativePath(cli.Report, configFilePath, fromConfig: false) };
+        }
+
         return values;
     }
 
-    internal static string? ResolvePayloadPath(string? payloadPath, string? configFilePath, bool fromConfig)
+    internal static string? ResolveConfigRelativePath(string? path, string? configFilePath, bool fromConfig)
     {
-        if (string.IsNullOrWhiteSpace(payloadPath))
+        if (string.IsNullOrWhiteSpace(path))
         {
-            return payloadPath;
+            return path;
         }
 
-        if (!fromConfig || Path.IsPathRooted(payloadPath) || string.IsNullOrWhiteSpace(configFilePath))
+        if (!fromConfig || Path.IsPathRooted(path) || string.IsNullOrWhiteSpace(configFilePath))
         {
-            return payloadPath;
+            return path;
         }
 
         var configDirectory = Path.GetDirectoryName(Path.GetFullPath(configFilePath));
         if (string.IsNullOrEmpty(configDirectory))
         {
-            return payloadPath;
+            return path;
         }
 
-        return Path.GetFullPath(Path.Combine(configDirectory, payloadPath));
+        return Path.GetFullPath(Path.Combine(configDirectory, path));
     }
+
+    internal static string? ResolvePayloadPath(string? payloadPath, string? configFilePath, bool fromConfig) =>
+        ResolveConfigRelativePath(payloadPath, configFilePath, fromConfig);
 }

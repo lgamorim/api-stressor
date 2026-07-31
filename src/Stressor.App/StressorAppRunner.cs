@@ -155,6 +155,10 @@ public sealed class StressorAppRunner
             Description = "Minimum wait after a cycle completes before the next cycle starts (default: 0s)",
             DefaultValueFactory = _ => "0s"
         };
+        var reportOption = new Option<string?>("--report")
+        {
+            Description = "Path to write a JSON session report after completion"
+        };
 
         rootCommand.Options.Add(configOption);
         rootCommand.Options.Add(urlOption);
@@ -172,6 +176,7 @@ public sealed class StressorAppRunner
         rootCommand.Options.Add(timeoutOption);
         rootCommand.Options.Add(cyclesOption);
         rootCommand.Options.Add(cycleIntervalOption);
+        rootCommand.Options.Add(reportOption);
 
         rootCommand.SetAction(async (parseResult, token) =>
         {
@@ -208,7 +213,8 @@ public sealed class StressorAppRunner
                 loadOption,
                 batchOption,
                 timeoutOption,
-                cycleIntervalOption);
+                cycleIntervalOption,
+                reportOption);
 
             var configuration = StressTestConfigurationMerger.Merge(document, configPath, cliOverrides);
 
@@ -298,7 +304,8 @@ public sealed class StressorAppRunner
         Option<string> loadOption,
         Option<int> batchOption,
         Option<string> timeoutOption,
-        Option<string> cycleIntervalOption)
+        Option<string> cycleIntervalOption,
+        Option<string?> reportOption)
     {
         var specified = new HashSet<string>();
 
@@ -377,6 +384,11 @@ public sealed class StressorAppRunner
             specified.Add(StressTestConfigurationOptionNames.CycleInterval);
         }
 
+        if (IsOptionSpecified(parseResult, reportOption))
+        {
+            specified.Add(StressTestConfigurationOptionNames.Report);
+        }
+
         return new StressTestCliOverrides
         {
             SpecifiedOptions = specified,
@@ -394,7 +406,8 @@ public sealed class StressorAppRunner
             Load = parseResult.GetValue(loadOption),
             Batch = parseResult.GetValue(batchOption),
             Timeout = parseResult.GetValue(timeoutOption),
-            CycleInterval = parseResult.GetValue(cycleIntervalOption)
+            CycleInterval = parseResult.GetValue(cycleIntervalOption),
+            Report = parseResult.GetValue(reportOption)
         };
     }
 
@@ -434,7 +447,28 @@ public sealed class StressorAppRunner
         try
         {
             var report = await runner.RunAsync(options, cancellationToken).ConfigureAwait(false);
-            return MapExitCode(report);
+            var exitCode = MapExitCode(report);
+
+            if (!string.IsNullOrWhiteSpace(options.ReportFilePath))
+            {
+                try
+                {
+                    var reportWriter = provider.GetRequiredService<IJsonSessionReportWriter>();
+                    await reportWriter.WriteAsync(
+                        report,
+                        options.ReportFilePath,
+                        exitCode,
+                        StressorAppHelp.GetAppVersion(),
+                        cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    await Console.Error.WriteLineAsync(ex.Message).ConfigureAwait(false);
+                    return 1;
+                }
+            }
+
+            return exitCode;
         }
         catch (Exception ex)
         {

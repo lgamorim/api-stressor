@@ -22,6 +22,7 @@ dotnet run --project src/Stressor.App -- `
   [--header <name-value>] `
   [--headers <path-to-headers.json>] `
   [--expect-status <code>] `
+  [--report <path-to-report.json>] `
   [--load <gentle-pacing|fixed-rate|batch>] `
   [--batch <count>] `
   [--timeout <duration>] `
@@ -68,6 +69,7 @@ When running the built executable:
 | `--header` | `-H` | No | Request header in `Name: Value` format (repeatable) |
 | `--headers` | | No | Path to a JSON file of HTTP header name/value pairs |
 | `--expect-status` | | No | HTTP status code that counts as success (repeatable; comma-separated allowed) |
+| `--report` | | No | Path to write a JSON session report after completion |
 | `--load` | `-l` | No | Load handling mode: `gentle-pacing` (default), `fixed-rate`, or `batch` |
 | `--batch` | `-b` | No | Max parallel requests per wave (default: `1`; use with `--load batch`) |
 | `--timeout` | `-t` | No | Per-request timeout (default: `100s`; same formats as `--interval`) |
@@ -99,6 +101,7 @@ Example `scenario.json`:
     "Accept": "application/json"
   },
   "expectStatus": [200, 201, 204],
+  "report": "./results/session-report.json",
   "verbose": "failures",
   "load": "gentle-pacing",
   "batch": 1,
@@ -168,6 +171,16 @@ By default, any **2xx** response counts as success. Use `--expect-status` (repea
 ```
 
 Explicit CLI flags replace the config list when provided. Status codes must be integers from 100 to 599. This is useful for strict contract tests (only `200`) or negative-path checks where a specific `4xx` is the expected outcome.
+
+### JSON report export
+
+Write a machine-readable session report with `--report` or `report` in the scenario config:
+
+```powershell
+--report ./results/session-report.json
+```
+
+The report includes session metadata, redacted configuration (no auth or header values), summary counts, latency percentiles, and per-request outcomes. It is written after every run, including partial or cancelled sessions. Use it in CI to assert on `exitCode`, failure counts, or latency thresholds.
 
 ### Interval formats
 

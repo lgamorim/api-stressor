@@ -47,4 +47,7 @@ public static class StressTestConfigurationOptionNames
 
     /// <summary>Cycle interval option name.</summary>
     public const string CycleInterval = "cycleInterval";
+
+    /// <summary>Report option name.</summary>
+    public const string Report = "report";
 }

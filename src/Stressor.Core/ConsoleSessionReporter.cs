@@ -156,6 +156,11 @@ public sealed class ConsoleSessionReporter : IConsoleSessionReporter
             _output.WriteLine("  Latency:   N/A");
         }
 
+        if (!string.IsNullOrWhiteSpace(report.Options.ReportFilePath))
+        {
+            _output.WriteLine($"  Report:   {report.Options.ReportFilePath}");
+        }
+
         WriteFailureDigest(report);
     }
 

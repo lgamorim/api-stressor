@@ -86,7 +86,8 @@ public static class StressTestOptionParser
             RequestTimeout = timeoutSpan,
             CycleInterval = cycleIntervalSpan,
             Headers = values.Headers,
-            ExpectedStatusCodes = values.ExpectStatus
+            ExpectedStatusCodes = values.ExpectStatus,
+            ReportFilePath = values.Report
         };
 
         var validationErrors = StressTestOptionsValidator.Validate(options);

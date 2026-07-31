@@ -3,6 +3,22 @@ namespace Stressor.Core.Tests;
 public class StressTestConfigurationMergerTests
 {
     [Fact]
+    public void Should_MergeConfigReportPath_When_DocumentProvidesReport()
+    {
+        var document = new StressTestScenarioDocument
+        {
+            Report = "./results/report.json"
+        };
+
+        var merged = StressTestConfigurationMerger.Merge(
+            document,
+            @"C:\scenarios\scenario.json",
+            new StressTestCliOverrides());
+
+        Assert.Equal(@"C:\scenarios\results\report.json", merged.Report);
+    }
+
+    [Fact]
     public void Should_MergeConfigExpectStatus_When_DocumentProvidesExpectStatus()
     {
         var document = new StressTestScenarioDocument

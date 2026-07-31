@@ -102,6 +102,19 @@ public class ConsoleSessionReporterTests
     }
 
     [Fact]
+    public void Should_ShowReportPath_When_ReportConfigured()
+    {
+        var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var reporter = new ConsoleSessionReporter(writer);
+        var options = CreateOptions() with { ReportFilePath = "./results/session-report.json" };
+        var report = new SessionReport(options, [], false);
+
+        reporter.WriteSessionComplete(report);
+
+        Assert.Contains("Report:   ./results/session-report.json", writer.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Should_ShowExpectedStatusCodes_When_Configured()
     {
         var writer = new StringWriter(CultureInfo.InvariantCulture);

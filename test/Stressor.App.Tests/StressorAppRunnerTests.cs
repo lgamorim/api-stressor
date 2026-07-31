@@ -235,7 +235,7 @@ public class StressorAppRunnerTests
             var exitCode = await new StressorAppRunner(CreateProvider()).RunAsync(["--version"], TestCancellation.Token);
 
             Assert.Equal(0, exitCode);
-            Assert.Contains("0.9.0-alpha", writer.ToString(), StringComparison.Ordinal);
+            Assert.Contains("0.10.0-alpha", writer.ToString(), StringComparison.Ordinal);
         }
         finally
         {
@@ -1371,6 +1371,89 @@ public class StressorAppRunnerTests
             [.. CreateArgs(), "--expect-status", "200"]);
 
         Assert.Equal(1, exitCode);
+    }
+
+    [Fact]
+    public async Task Should_WriteReportFile_When_ReportFlagProvided()
+    {
+        var reportPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json");
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        await ExecuteWithRunner(
+            stressTestRunner,
+            [.. CreateArgs(), "--report", reportPath]);
+
+        Assert.True(File.Exists(reportPath));
+        var json = await File.ReadAllTextAsync(reportPath, TestCancellation.Token);
+        Assert.Contains("\"exitCode\": 0", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Should_ReturnExitCodeOne_When_ReportWriteFails()
+    {
+        var blockingFile = Path.GetTempFileName();
+        var reportPath = Path.Combine(blockingFile, "report.json");
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        var exitCode = await ExecuteWithRunner(
+            stressTestRunner,
+            [.. CreateArgs(), "--report", reportPath]);
+
+        Assert.Equal(1, exitCode);
+    }
+
+    [Fact]
+    public async Task Should_OverrideConfigReportPath_When_CliExplicit()
+    {
+        var configPath = await WriteTempScenarioAsync(
+            """
+            {
+              "url": "https://example.com",
+              "payload": "payload.json",
+              "requests": 1,
+              "interval": "1s",
+              "report": "./from-config.json"
+            }
+            """);
+        var reportPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json");
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        await ExecuteWithRunner(
+            stressTestRunner,
+            ["--config", configPath, "--report", reportPath]);
+
+        await stressTestRunner.Received(1).RunAsync(
+            Arg.Is<StressTestOptions>(o => o.ReportFilePath == reportPath),
+            Arg.Any<CancellationToken>());
+        Assert.True(File.Exists(reportPath));
+    }
+
+    [Fact]
+    public async Task Should_IncludeExitCodeInReport_When_SessionHasFailures()
+    {
+        var reportPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json");
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        var options = CreateOptions();
+        var report = new SessionReport(
+            options,
+            [new RequestOutcome(1, 1, false, false, 500, TimeSpan.Zero, "error")],
+            false);
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>()).Returns(report);
+
+        var exitCode = await ExecuteWithRunner(
+            stressTestRunner,
+            [.. CreateArgs(), "--report", reportPath]);
+
+        Assert.Equal(1, exitCode);
+        var json = await File.ReadAllTextAsync(reportPath, TestCancellation.Token);
+        Assert.Contains("\"exitCode\": 1", json, StringComparison.Ordinal);
+        Assert.Contains("\"failed\": 1", json, StringComparison.Ordinal);
     }
 
     private static async Task<string> WriteTempHeadersAsync(string content)

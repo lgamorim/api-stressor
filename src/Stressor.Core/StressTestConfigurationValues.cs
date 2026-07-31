@@ -45,4 +45,7 @@ public sealed record StressTestConfigurationValues
 
     /// <summary>Minimum wait after a cycle completes before the next cycle starts.</summary>
     public string CycleInterval { get; init; } = "0s";
+
+    /// <summary>Path to write a JSON session report after completion.</summary>
+    public string? Report { get; init; }
 }
