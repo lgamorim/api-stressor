@@ -10,12 +10,15 @@ public class StressTestConfigurationMergerTests
             Report = "./results/report.json"
         };
 
+        var configPath = Path.Combine(Path.GetTempPath(), "scenarios", "scenario.json");
         var merged = StressTestConfigurationMerger.Merge(
             document,
-            @"C:\scenarios\scenario.json",
+            configPath,
             new StressTestCliOverrides());
 
-        Assert.Equal(@"C:\scenarios\results\report.json", merged.Report);
+        Assert.Equal(
+            Path.GetFullPath(Path.Combine(Path.GetTempPath(), "scenarios", "results", "report.json")),
+            merged.Report);
     }
 
     [Fact]
