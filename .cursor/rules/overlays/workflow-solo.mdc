@@ -16,3 +16,5 @@ always enabled.
   waived.
 - If a second contributor joins, revisit workflow rules and add a team overlay
   as needed.
+- Never commit to `master`, tag, or publish a release without the user's explicit
+  approval.
