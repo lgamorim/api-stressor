@@ -41,7 +41,10 @@ public sealed record SessionReportConfigurationDocument
     public required int RequestsPerCycle { get; init; }
 
     /// <summary>Number of cycles.</summary>
-    public required int Cycles { get; init; }
+    public int? Cycles { get; init; }
+
+    /// <summary>Session duration in milliseconds, when duration-limited.</summary>
+    public double? DurationMs { get; init; }
 
     /// <summary>Interval between request starts in milliseconds.</summary>
     public required double IntervalMs { get; init; }

@@ -1425,10 +1425,76 @@ public class StressTestRunnerTests
     private StressTestRunner CreateRunner() =>
         new(_payloadReader, _httpClient, _reporter, _timeProvider);
 
-    private static StressTestOptions CreateOptions(int requests = 1, int cycles = 1, int intervalMs = 1000, VerboseMode verbose = VerboseMode.Off, LoadMode load = LoadMode.GentlePacing, int batch = 1, int cycleIntervalMs = 0) =>
+    [Fact]
+    public async Task Should_RunMultipleCycles_When_DurationNotYetElapsed()
+    {
+        ConfigureSuccessfulRequest();
+        var advancingTime = new AdvancingTimeProvider();
+        var runner = new StressTestRunner(_payloadReader, _httpClient, _reporter, advancingTime);
+        var options = CreateOptions(requests: 1, cycles: 1, cycleIntervalMs: 1000, duration: TimeSpan.FromSeconds(5));
+
+        var report = await runner.RunAsync(options, TestCancellation.Token);
+
+        Assert.Equal(5, report.TotalRequests);
+    }
+
+    [Fact]
+    public async Task Should_StopAfterCycleBoundary_When_DurationElapsed()
+    {
+        ConfigureSuccessfulRequest();
+        var advancingTime = new AdvancingTimeProvider();
+        var runner = new StressTestRunner(_payloadReader, _httpClient, _reporter, advancingTime);
+        var options = CreateOptions(requests: 1, cycles: 1, cycleIntervalMs: 2000, duration: TimeSpan.FromSeconds(3));
+
+        var report = await runner.RunAsync(options, TestCancellation.Token);
+
+        Assert.Equal(2, report.TotalRequests);
+    }
+
+    [Fact]
+    public async Task Should_RunOneCycle_When_DurationLongerThanOneCycle()
+    {
+        ConfigureSuccessfulRequest();
+        var advancingTime = new AdvancingTimeProvider();
+        var runner = new StressTestRunner(_payloadReader, _httpClient, _reporter, advancingTime);
+        var options = CreateOptions(requests: 2, cycles: 1, intervalMs: 1000, cycleIntervalMs: 5000, duration: TimeSpan.FromMilliseconds(1));
+
+        var report = await runner.RunAsync(options, TestCancellation.Token);
+
+        Assert.Equal(2, report.TotalRequests);
+    }
+
+    [Fact]
+    public async Task Should_WorkInDurationMode_When_FixedRate()
+    {
+        ConfigureSuccessfulRequest();
+        var advancingTime = new AdvancingTimeProvider();
+        var runner = new StressTestRunner(_payloadReader, _httpClient, _reporter, advancingTime);
+        var options = CreateOptions(requests: 1, cycles: 1, intervalMs: 1000, load: LoadMode.FixedRate, cycleIntervalMs: 1000, duration: TimeSpan.FromSeconds(3));
+
+        var report = await runner.RunAsync(options, TestCancellation.Token);
+
+        Assert.Equal(3, report.TotalRequests);
+    }
+
+    [Fact]
+    public async Task Should_WorkInDurationMode_When_Batch()
+    {
+        ConfigureSuccessfulRequest();
+        var advancingTime = new AdvancingTimeProvider();
+        var runner = new StressTestRunner(_payloadReader, _httpClient, _reporter, advancingTime);
+        var options = CreateOptions(requests: 2, cycles: 1, intervalMs: 0, load: LoadMode.Batch, batch: 2, cycleIntervalMs: 1000, duration: TimeSpan.FromSeconds(3));
+
+        var report = await runner.RunAsync(options, TestCancellation.Token);
+
+        Assert.Equal(6, report.TotalRequests);
+    }
+
+    private static StressTestOptions CreateOptions(int requests = 1, int cycles = 1, int intervalMs = 1000, VerboseMode verbose = VerboseMode.Off, LoadMode load = LoadMode.GentlePacing, int batch = 1, int cycleIntervalMs = 0, TimeSpan? duration = null) =>
         new(new Uri("https://example.com"), "payload.json", HttpMethod.Post, requests, TimeSpan.FromMilliseconds(intervalMs), cycles, Verbose: verbose, Load: load, Batch: batch)
         {
-            CycleInterval = TimeSpan.FromMilliseconds(cycleIntervalMs)
+            CycleInterval = TimeSpan.FromMilliseconds(cycleIntervalMs),
+            Duration = duration
         };
 
     private static void AssertApproximateDelay(TimeSpan expected, TimeSpan actual)

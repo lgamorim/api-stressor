@@ -95,8 +95,9 @@ public static class StressorAppHelp
         output.WriteLine("  --interval is the spacing between consecutive request starts (minimum for gentle-pacing, exact for fixed-rate).");
         output.WriteLine("  In batch mode, --interval is the spacing between wave starts (0s allowed for back-to-back waves).");
         output.WriteLine("  --cycle-interval is the minimum wait after a cycle completes before the next cycle starts (default: 0s).");
-        output.WriteLine("  Each cycle sends --requests calls; when --cycle-interval is 0s, pacing continues across cycle boundaries.");
-        output.WriteLine("  Total requests in a session = requests x cycles.");
+        output.WriteLine("  --duration runs repeated cycles until the wall-clock time budget elapses (alternative to --cycles).");
+        output.WriteLine("  --duration and --cycles are mutually exclusive.");
+        output.WriteLine("  Total requests in a cycle-limited session = requests x cycles.");
         output.WriteLine("  Use --verbose failures to print detail only for failed or cancelled requests.");
         output.WriteLine("  Use --verbose full to print detail for every request (short smoke/debug runs).");
         output.WriteLine("  Verbose output includes session index, payload variant, bodies, and HTTP status.");

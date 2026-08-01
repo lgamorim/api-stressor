@@ -47,4 +47,7 @@ public sealed record StressTestScenarioDocument
 
     /// <summary>Path to write a JSON session report after completion.</summary>
     public string? Report { get; init; }
+
+    /// <summary>Wall-clock session duration (alternative to cycles).</summary>
+    public string? Duration { get; init; }
 }

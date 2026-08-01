@@ -48,4 +48,13 @@ public sealed record StressTestConfigurationValues
 
     /// <summary>Path to write a JSON session report after completion.</summary>
     public string? Report { get; init; }
+
+    /// <summary>Wall-clock session duration (alternative to cycles).</summary>
+    public string? Duration { get; init; }
+
+    /// <summary>Whether cycles were explicitly set in config or CLI.</summary>
+    public bool CyclesSpecified { get; init; }
+
+    /// <summary>Whether duration was explicitly set in config or CLI.</summary>
+    public bool DurationSpecified { get; init; }
 }

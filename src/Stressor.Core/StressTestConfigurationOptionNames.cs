@@ -50,4 +50,7 @@ public static class StressTestConfigurationOptionNames
 
     /// <summary>Report option name.</summary>
     public const string Report = "report";
+
+    /// <summary>Duration option name.</summary>
+    public const string Duration = "duration";
 }

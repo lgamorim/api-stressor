@@ -36,7 +36,10 @@ public static class StressTestConfigurationMerger
                 Batch = document.Batch ?? values.Batch,
                 Timeout = document.Timeout ?? values.Timeout,
                 CycleInterval = document.CycleInterval ?? values.CycleInterval,
-                Report = ResolveConfigRelativePath(document.Report, configFilePath, fromConfig: true)
+                Report = ResolveConfigRelativePath(document.Report, configFilePath, fromConfig: true),
+                Duration = document.Duration,
+                CyclesSpecified = document.Cycles is not null,
+                DurationSpecified = document.Duration is not null
             };
         }
 
@@ -67,7 +70,20 @@ public static class StressTestConfigurationMerger
 
         if (cli.IsSpecified(StressTestConfigurationOptionNames.Cycles) && cli.Cycles is not null)
         {
-            values = values with { Cycles = cli.Cycles.Value };
+            values = values with
+            {
+                Cycles = cli.Cycles.Value,
+                CyclesSpecified = true
+            };
+        }
+
+        if (cli.IsSpecified(StressTestConfigurationOptionNames.Duration) && cli.Duration is not null)
+        {
+            values = values with
+            {
+                Duration = cli.Duration,
+                DurationSpecified = true
+            };
         }
 
         if (cli.IsSpecified(StressTestConfigurationOptionNames.Auth))

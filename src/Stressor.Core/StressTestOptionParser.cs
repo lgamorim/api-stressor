@@ -30,6 +30,11 @@ public static class StressTestOptionParser
             errors.Add("Interval is required.");
         }
 
+        if (values.CyclesSpecified && values.DurationSpecified)
+        {
+            errors.Add("Cannot specify both duration and cycles.");
+        }
+
         if (errors.Count > 0)
         {
             return (null, errors);
@@ -71,6 +76,18 @@ public static class StressTestOptionParser
             return (null, errors);
         }
 
+        TimeSpan? duration = null;
+        if (values.DurationSpecified)
+        {
+            if (!TryParseInterval(values.Duration!, allowZero: false, out var durationSpan))
+            {
+                errors.Add("Duration must be a valid duration (e.g. 5m, 300s, 00:05:00).");
+                return (null, errors);
+            }
+
+            duration = durationSpan;
+        }
+
         var options = new StressTestOptions(
             uri,
             values.Payload!,
@@ -87,7 +104,8 @@ public static class StressTestOptionParser
             CycleInterval = cycleIntervalSpan,
             Headers = values.Headers,
             ExpectedStatusCodes = values.ExpectStatus,
-            ReportFilePath = values.Report
+            ReportFilePath = values.Report,
+            Duration = duration
         };
 
         var validationErrors = StressTestOptionsValidator.Validate(options);
@@ -111,6 +129,13 @@ public static class StressTestOptionParser
             && double.TryParse(value[..^2], NumberStyles.Float, CultureInfo.InvariantCulture, out var milliseconds))
         {
             interval = TimeSpan.FromMilliseconds(milliseconds);
+            return allowZero ? interval >= TimeSpan.Zero : interval > TimeSpan.Zero;
+        }
+
+        if (value.EndsWith('m') && !value.EndsWith("ms", StringComparison.OrdinalIgnoreCase)
+            && double.TryParse(value[..^1], NumberStyles.Float, CultureInfo.InvariantCulture, out var minutes))
+        {
+            interval = TimeSpan.FromMinutes(minutes);
             return allowZero ? interval >= TimeSpan.Zero : interval > TimeSpan.Zero;
         }
 

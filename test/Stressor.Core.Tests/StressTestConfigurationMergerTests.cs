@@ -123,4 +123,39 @@ public class StressTestConfigurationMergerTests
             Path.GetFullPath(Path.Combine(Path.GetTempPath(), "scenarios", "data", "payload.json")),
             merged.Payload);
     }
+
+    [Fact]
+    public void Should_MergeConfigDuration_When_DocumentProvidesDuration()
+    {
+        var document = new StressTestScenarioDocument
+        {
+            Duration = "5m"
+        };
+
+        var merged = StressTestConfigurationMerger.Merge(document, null, new StressTestCliOverrides());
+
+        Assert.Equal("5m", merged.Duration);
+        Assert.True(merged.DurationSpecified);
+        Assert.False(merged.CyclesSpecified);
+    }
+
+    [Fact]
+    public void Should_OverrideConfigDuration_When_CliExplicit()
+    {
+        var document = new StressTestScenarioDocument
+        {
+            Duration = "5m"
+        };
+
+        var cli = new StressTestCliOverrides
+        {
+            SpecifiedOptions = new HashSet<string> { StressTestConfigurationOptionNames.Duration },
+            Duration = "10m"
+        };
+
+        var merged = StressTestConfigurationMerger.Merge(document, null, cli);
+
+        Assert.Equal("10m", merged.Duration);
+        Assert.True(merged.DurationSpecified);
+    }
 }

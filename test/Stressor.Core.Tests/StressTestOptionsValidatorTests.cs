@@ -381,4 +381,24 @@ public class StressTestOptionsValidatorTests
 
         Assert.Contains(errors, e => e.Equals("Cycle interval must be greater than or equal to zero.", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void Should_ReturnNoErrors_When_DurationLimitedWithPositiveDuration()
+    {
+        var options = CreateValidOptions() with { Duration = TimeSpan.FromMinutes(5) };
+
+        var errors = StressTestOptionsValidator.Validate(options);
+
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void Should_ReturnError_When_DurationZero()
+    {
+        var options = CreateValidOptions() with { Duration = TimeSpan.Zero };
+
+        var errors = StressTestOptionsValidator.Validate(options);
+
+        Assert.Contains(errors, e => e.Equals("Duration must be greater than zero.", StringComparison.Ordinal));
+    }
 }

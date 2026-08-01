@@ -103,4 +103,78 @@ public class StressTestOptionParserTests
         Assert.Contains(errors, e => e.Contains("Requests", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(errors, e => e.Contains("Interval", StringComparison.OrdinalIgnoreCase));
     }
+
+    [Theory]
+    [InlineData("5m", 300_000)]
+    [InlineData("300s", 300_000)]
+    [InlineData("00:05:00", 300_000)]
+    public void Should_ParseDuration_When_ValidFormats(string value, double expectedMilliseconds)
+    {
+        Assert.True(StressTestOptionParser.TryParseInterval(value, out var interval));
+        Assert.Equal(expectedMilliseconds, interval.TotalMilliseconds);
+    }
+
+    [Fact]
+    public void Should_CreateOptionsWithDuration_When_ValidConfiguration()
+    {
+        var values = CreateValidValues() with
+        {
+            Duration = "5m",
+            DurationSpecified = true,
+            CyclesSpecified = false
+        };
+
+        var (options, errors) = StressTestOptionParser.TryCreateOptions(values);
+
+        Assert.NotNull(options);
+        Assert.Empty(errors);
+        Assert.True(options.IsDurationLimited);
+        Assert.Equal(TimeSpan.FromMinutes(5), options.Duration);
+    }
+
+    [Fact]
+    public void Should_ReturnError_When_DurationAndCyclesBothSpecified()
+    {
+        var values = CreateValidValues() with
+        {
+            CyclesSpecified = true,
+            Duration = "5m",
+            DurationSpecified = true
+        };
+
+        var (options, errors) = StressTestOptionParser.TryCreateOptions(values);
+
+        Assert.Null(options);
+        Assert.Contains(errors, e => e.Contains("duration", StringComparison.OrdinalIgnoreCase)
+            && e.Contains("cycles", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Theory]
+    [InlineData("0s")]
+    [InlineData("-1s")]
+    public void Should_ReturnError_When_DurationZeroOrNegative(string duration)
+    {
+        var values = CreateValidValues() with
+        {
+            Duration = duration,
+            DurationSpecified = true,
+            CyclesSpecified = false
+        };
+
+        var (options, errors) = StressTestOptionParser.TryCreateOptions(values);
+
+        Assert.Null(options);
+        Assert.Contains(errors, e => e.Contains("Duration", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static StressTestConfigurationValues CreateValidValues() =>
+        new()
+        {
+            Url = "https://example.com/api",
+            Payload = "payload.json",
+            Method = "POST",
+            Requests = 10,
+            Interval = "1s",
+            Cycles = 5
+        };
 }

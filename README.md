@@ -51,6 +51,7 @@ dotnet run --project src/Stressor.App -- `
   [--batch <count>] `
   [--timeout <duration>] `
   [--cycles <count>] `
+  [--duration <duration>] `
   [--cycle-interval <duration>] `
   [--verbose <failures|full>]
 ```
@@ -97,7 +98,8 @@ When running the built executable:
 | `--load` | `-l` | No | Load handling mode: `gentle-pacing` (default), `fixed-rate`, or `batch` |
 | `--batch` | `-b` | No | Max parallel requests per wave (default: `1`; use with `--load batch`) |
 | `--timeout` | `-t` | No | Per-request timeout (default: `100s`; same formats as `--interval`) |
-| `--cycles` | `-c` | No | Number of cycles to run (default: `1`) |
+| `--cycles` | `-c` | No | Number of cycles to run (default: `1`; mutually exclusive with `--duration`) |
+| `--duration` | | No | Wall-clock session duration (alternative to `--cycles`; same formats as `--interval`) |
 | `--cycle-interval` | | No | Minimum wait after a cycle completes before the next cycle starts (default: `0s`; same formats as `--interval`) |
 | `--verbose` | `-v` | No | Per-request output mode: `failures` (detail only on errors) or `full` (detail on every request) |
 | `--help` | `-h` | No | Show usage information and exit |
@@ -133,6 +135,8 @@ Example `scenario.json`:
   "cycleInterval": "0s"
 }
 ```
+
+For a soak test, use `"duration": "5m"` instead of `"cycles"` (the two are mutually exclusive).
 
 Run with:
 
@@ -218,11 +222,15 @@ The `--timeout` and `--cycle-interval` values use the same formats (`--timeout` 
 
 ## How load is applied
 
-Use `--load` to choose how requests are scheduled. Each **cycle** sends `--requests` calls. Use `--interval` for spacing within a cycle. Use `--cycle-interval` for an optional rest between cycles (default `0s`, which keeps pacing continuous across cycle boundaries). The total number of requests in a session is:
+Use `--load` to choose how requests are scheduled. Each **cycle** sends `--requests` calls. Use `--interval` for spacing within a cycle. Use `--cycle-interval` for an optional rest between cycles (default `0s`, which keeps pacing continuous across cycle boundaries).
+
+For cycle-limited sessions, the total number of requests is:
 
 ```
 requests × cycles
 ```
+
+Use `--duration` instead of `--cycles` to run repeated cycles until a wall-clock time budget elapses (for example `--duration 5m`). `--duration` and `--cycles` cannot be used together.
 
 ### `gentle-pacing` (default)
 

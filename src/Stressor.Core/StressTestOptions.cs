@@ -31,4 +31,10 @@ public sealed record StressTestOptions(
 
     /// <summary>Minimum wait after a cycle completes before the next cycle starts.</summary>
     public TimeSpan CycleInterval { get; init; } = TimeSpan.Zero;
+
+    /// <summary>Wall-clock session duration. When set, cycles are ignored and the session runs until elapsed.</summary>
+    public TimeSpan? Duration { get; init; }
+
+    /// <summary>Whether the session is limited by wall-clock duration instead of a cycle count.</summary>
+    public bool IsDurationLimited => Duration is not null;
 }

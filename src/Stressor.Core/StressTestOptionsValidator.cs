@@ -70,9 +70,14 @@ public static class StressTestOptionsValidator
             errors.Add("Interval must be greater than zero.");
         }
 
-        if (options.Cycles <= 0)
+        if (!options.IsDurationLimited && options.Cycles <= 0)
         {
             errors.Add("Cycles must be greater than zero.");
+        }
+
+        if (options.IsDurationLimited && options.Duration <= TimeSpan.Zero)
+        {
+            errors.Add("Duration must be greater than zero.");
         }
 
         if (options.Auth is not null && string.IsNullOrWhiteSpace(options.Auth))

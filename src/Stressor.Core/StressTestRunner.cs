@@ -48,14 +48,17 @@ public sealed class StressTestRunner : IStressTestRunner
     {
         var outcomes = new List<RequestOutcome>();
         var wasCancelled = false;
-        var sessionTotalRequests = options.RequestsPerInterval * options.Cycles;
+        var sessionStart = _timeProvider.GetUtcNow();
+        var totalCycles = GetTotalCycles(options);
+        var sessionTotalRequests = GetSessionTotalRequests(options);
+        var sessionRequestIndex = 0;
 
         _reporter.WriteSessionStart(options);
 
         var elapsed = TimeSpan.Zero;
         TimeSpan? nextRequestStart = null;
 
-        for (var cycle = 1; cycle <= options.Cycles && !cancellationToken.IsCancellationRequested; cycle++)
+        for (var cycle = 1; ShouldStartCycle(cycle, sessionStart, options) && !cancellationToken.IsCancellationRequested; cycle++)
         {
             var cycleOutcomes = new List<RequestOutcome>();
 
@@ -80,7 +83,7 @@ public sealed class StressTestRunner : IStressTestRunner
                 var payload = payloads[(request - 1) % payloads.Count];
                 var payloadIndex = (request - 1) % payloads.Count + 1;
                 var requestStart = elapsed;
-                var sessionRequestIndex = (cycle - 1) * options.RequestsPerInterval + request;
+                sessionRequestIndex++;
 
                 var outcome = await _httpClient.SendAsync(
                     options,
@@ -104,6 +107,7 @@ public sealed class StressTestRunner : IStressTestRunner
                 ReportVerboseRequestIfNeeded(
                     options,
                     cycle,
+                    totalCycles,
                     request,
                     payload,
                     payloads.Count,
@@ -118,9 +122,11 @@ public sealed class StressTestRunner : IStressTestRunner
                 }
             }
 
-            _reporter.WriteCycleSummary(cycle, options.Cycles, cycleOutcomes);
+            _reporter.WriteCycleSummary(cycle, totalCycles, cycleOutcomes);
 
-            if (!wasCancelled && cycle < options.Cycles && options.CycleInterval > TimeSpan.Zero)
+            if (!wasCancelled
+                && ShouldStartCycle(cycle + 1, sessionStart, options)
+                && options.CycleInterval > TimeSpan.Zero)
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
@@ -155,23 +161,42 @@ public sealed class StressTestRunner : IStressTestRunner
         IReadOnlyList<string> payloads,
         CancellationToken cancellationToken)
     {
-        var totalRequests = options.RequestsPerInterval * options.Cycles;
-        var tasksByCycle = new List<List<Task<RequestOutcome>>>(options.Cycles);
-        for (var i = 0; i < options.Cycles; i++)
-        {
-            tasksByCycle.Add([]);
-        }
-
         var outcomes = new List<RequestOutcome>();
         var wasCancelled = false;
         var elapsed = TimeSpan.Zero;
+        var sessionStart = _timeProvider.GetUtcNow();
+        var totalCycles = GetTotalCycles(options);
+        var sessionTotalRequests = GetSessionTotalRequests(options);
+        var tasksByCycle = new List<List<Task<RequestOutcome>>>();
+        var sessionRequestIndex = 0;
 
         _reporter.WriteSessionStart(options);
 
-        for (var k = 0; k < totalRequests && !cancellationToken.IsCancellationRequested; k++)
+        var k = 0;
+        while (!cancellationToken.IsCancellationRequested)
         {
-            var cycleIndex = k / options.RequestsPerInterval;
+            var cycle = k / options.RequestsPerInterval + 1;
             var requestInCycle = k % options.RequestsPerInterval;
+
+            if (requestInCycle == 0)
+            {
+                if (!options.IsDurationLimited && cycle > options.Cycles)
+                {
+                    break;
+                }
+
+                if (options.IsDurationLimited && !ShouldStartCycle(cycle, sessionStart, options))
+                {
+                    break;
+                }
+            }
+
+            var cycleIndex = k / options.RequestsPerInterval;
+            while (tasksByCycle.Count <= cycleIndex)
+            {
+                tasksByCycle.Add([]);
+            }
+
             var scheduledAt = TimeSpan.FromTicks(
                 (long)cycleIndex * (options.RequestsPerInterval * options.Interval.Ticks + options.CycleInterval.Ticks)
                 + (long)requestInCycle * options.Interval.Ticks);
@@ -186,10 +211,9 @@ public sealed class StressTestRunner : IStressTestRunner
                 elapsed = scheduledAt;
             }
 
-            var cycle = k / options.RequestsPerInterval + 1;
-            var request = k % options.RequestsPerInterval + 1;
+            var request = requestInCycle + 1;
             var payload = payloads[(request - 1) % payloads.Count];
-            var sessionRequestIndex = k + 1;
+            sessionRequestIndex++;
 
             var task = SendAndReportAsync(
                 options,
@@ -198,10 +222,12 @@ public sealed class StressTestRunner : IStressTestRunner
                 cycle,
                 request,
                 sessionRequestIndex,
-                totalRequests,
+                sessionTotalRequests,
+                totalCycles,
                 cancellationToken);
 
-            tasksByCycle[cycle - 1].Add(task);
+            tasksByCycle[cycleIndex].Add(task);
+            k++;
         }
 
         if (cancellationToken.IsCancellationRequested)
@@ -209,7 +235,7 @@ public sealed class StressTestRunner : IStressTestRunner
             wasCancelled = true;
         }
 
-        for (var cycle = 1; cycle <= options.Cycles; cycle++)
+        for (var cycle = 1; cycle <= tasksByCycle.Count; cycle++)
         {
             var cycleTasks = tasksByCycle[cycle - 1];
             if (cycleTasks.Count == 0)
@@ -225,7 +251,7 @@ public sealed class StressTestRunner : IStressTestRunner
                 wasCancelled = true;
             }
 
-            _reporter.WriteCycleSummary(cycle, options.Cycles, cycleOutcomes);
+            _reporter.WriteCycleSummary(cycle, totalCycles, cycleOutcomes);
         }
 
         if (cancellationToken.IsCancellationRequested)
@@ -245,14 +271,17 @@ public sealed class StressTestRunner : IStressTestRunner
     {
         var outcomes = new List<RequestOutcome>();
         var wasCancelled = false;
-        var sessionTotalRequests = options.RequestsPerInterval * options.Cycles;
+        var sessionStart = _timeProvider.GetUtcNow();
+        var totalCycles = GetTotalCycles(options);
+        var sessionTotalRequests = GetSessionTotalRequests(options);
+        var sessionRequestIndex = 0;
 
         _reporter.WriteSessionStart(options);
 
         var elapsed = TimeSpan.Zero;
         TimeSpan? nextWaveStart = null;
 
-        for (var cycle = 1; cycle <= options.Cycles && !cancellationToken.IsCancellationRequested; cycle++)
+        for (var cycle = 1; ShouldStartCycle(cycle, sessionStart, options) && !cancellationToken.IsCancellationRequested; cycle++)
         {
             var cycleOutcomes = new List<RequestOutcome>();
 
@@ -282,7 +311,7 @@ public sealed class StressTestRunner : IStressTestRunner
                 {
                     var request = waveStart + i + 1;
                     var payload = payloads[(request - 1) % payloads.Count];
-                    var sessionRequestIndex = (cycle - 1) * options.RequestsPerInterval + request;
+                    sessionRequestIndex++;
 
                     tasks[i] = SendAndReportAsync(
                         options,
@@ -292,6 +321,7 @@ public sealed class StressTestRunner : IStressTestRunner
                         request,
                         sessionRequestIndex,
                         sessionTotalRequests,
+                        totalCycles,
                         cancellationToken);
                 }
 
@@ -315,9 +345,11 @@ public sealed class StressTestRunner : IStressTestRunner
                 }
             }
 
-            _reporter.WriteCycleSummary(cycle, options.Cycles, cycleOutcomes);
+            _reporter.WriteCycleSummary(cycle, totalCycles, cycleOutcomes);
 
-            if (!wasCancelled && cycle < options.Cycles && options.CycleInterval > TimeSpan.Zero)
+            if (!wasCancelled
+                && ShouldStartCycle(cycle + 1, sessionStart, options)
+                && options.CycleInterval > TimeSpan.Zero)
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
@@ -347,6 +379,17 @@ public sealed class StressTestRunner : IStressTestRunner
         return report;
     }
 
+    private bool ShouldStartCycle(int cycle, DateTimeOffset sessionStart, StressTestOptions options) =>
+        options.IsDurationLimited
+            ? _timeProvider.GetUtcNow() - sessionStart < options.Duration
+            : cycle <= options.Cycles;
+
+    private static int? GetTotalCycles(StressTestOptions options) =>
+        options.IsDurationLimited ? null : options.Cycles;
+
+    private static int? GetSessionTotalRequests(StressTestOptions options) =>
+        options.IsDurationLimited ? null : options.RequestsPerInterval * options.Cycles;
+
     private async Task<RequestOutcome> SendAndReportAsync(
         StressTestOptions options,
         IReadOnlyList<string> payloads,
@@ -354,7 +397,8 @@ public sealed class StressTestRunner : IStressTestRunner
         int cycle,
         int request,
         int sessionRequestIndex,
-        int sessionTotalRequests,
+        int? sessionTotalRequests,
+        int? totalCycles,
         CancellationToken cancellationToken)
     {
         var payloadIndex = (request - 1) % payloads.Count + 1;
@@ -374,6 +418,7 @@ public sealed class StressTestRunner : IStressTestRunner
         ReportVerboseRequestIfNeeded(
             options,
             cycle,
+            totalCycles,
             request,
             payload,
             payloads.Count,
@@ -387,11 +432,12 @@ public sealed class StressTestRunner : IStressTestRunner
     private void ReportVerboseRequestIfNeeded(
         StressTestOptions options,
         int cycle,
+        int? totalCycles,
         int request,
         string payload,
         int payloadCount,
         int sessionRequestIndex,
-        int sessionTotalRequests,
+        int? sessionTotalRequests,
         RequestOutcome outcome)
     {
         if (!ShouldReportVerbose(options.Verbose, outcome))
@@ -405,7 +451,7 @@ public sealed class StressTestRunner : IStressTestRunner
 
         _reporter.WriteVerboseRequest(
             cycle,
-            options.Cycles,
+            totalCycles,
             request,
             options.RequestsPerInterval,
             requestPayload,

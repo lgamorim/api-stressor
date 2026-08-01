@@ -54,6 +54,9 @@ public sealed record StressTestCliOverrides
     /// <summary>Report file path from the CLI.</summary>
     public string? Report { get; init; }
 
+    /// <summary>Session duration from the CLI.</summary>
+    public string? Duration { get; init; }
+
     /// <summary>Returns whether the named option was explicitly specified on the command line.</summary>
     public bool IsSpecified(string optionName) => SpecifiedOptions.Contains(optionName);
 }

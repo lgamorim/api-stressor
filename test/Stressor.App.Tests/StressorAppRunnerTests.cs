@@ -184,6 +184,7 @@ public class StressorAppRunnerTests
             Assert.Contains("Examples:", output);
             Assert.Contains("Exit codes:", output);
             Assert.Contains("--cycles", output);
+            Assert.Contains("--duration", output);
             Assert.Contains("default: 1", output, StringComparison.OrdinalIgnoreCase);
 
             var lines = output.Split('\n');
@@ -235,7 +236,7 @@ public class StressorAppRunnerTests
             var exitCode = await new StressorAppRunner(CreateProvider()).RunAsync(["--version"], TestCancellation.Token);
 
             Assert.Equal(0, exitCode);
-            Assert.Contains("0.11.0-alpha", writer.ToString(), StringComparison.Ordinal);
+            Assert.Contains("0.12.0-alpha", writer.ToString(), StringComparison.Ordinal);
         }
         finally
         {
@@ -788,6 +789,35 @@ public class StressorAppRunnerTests
             CreateArgs(cycles: "abc"));
 
         Assert.NotEqual(0, exitCode);
+    }
+
+    [Fact]
+    public async Task Should_BindDuration_When_DurationExplicit()
+    {
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        await ExecuteWithRunner(stressTestRunner, CreateArgs(duration: "5m"));
+
+        await stressTestRunner.Received(1).RunAsync(
+            Arg.Is<StressTestOptions>(o => o.Duration == TimeSpan.FromMinutes(5)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_ReturnExitCodeOne_When_DurationAndCyclesBothSpecified()
+    {
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+
+        var exitCode = await ExecuteWithRunner(
+            stressTestRunner,
+            CreateArgs(cycles: "10", duration: "5m"));
+
+        Assert.Equal(1, exitCode);
+        await stressTestRunner.DidNotReceive().RunAsync(
+            Arg.Any<StressTestOptions>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Theory]
@@ -1470,7 +1500,7 @@ public class StressorAppRunnerTests
         return path;
     }
 
-    private static string[] CreateArgs(string? method = "POST", string? auth = null, string? verbose = null, string? load = null, string? cycles = null, string? batch = null, string? requests = null)
+    private static string[] CreateArgs(string? method = "POST", string? auth = null, string? verbose = null, string? load = null, string? cycles = null, string? batch = null, string? requests = null, string? duration = null)
     {
         var args = new List<string>
         {
@@ -1514,6 +1544,12 @@ public class StressorAppRunnerTests
         {
             args.Add("--batch");
             args.Add(batch);
+        }
+
+        if (duration is not null)
+        {
+            args.Add("--duration");
+            args.Add(duration);
         }
 
         return [.. args];

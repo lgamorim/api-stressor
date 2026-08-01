@@ -155,6 +155,10 @@ public sealed class StressorAppRunner
             Description = "Minimum wait after a cycle completes before the next cycle starts (default: 0s)",
             DefaultValueFactory = _ => "0s"
         };
+        var durationOption = new Option<string?>("--duration")
+        {
+            Description = "Wall-clock session duration (alternative to --cycles; e.g. 5m, 300s, 00:05:00)"
+        };
         var reportOption = new Option<string?>("--report")
         {
             Description = "Path to write a JSON session report after completion"
@@ -176,6 +180,7 @@ public sealed class StressorAppRunner
         rootCommand.Options.Add(timeoutOption);
         rootCommand.Options.Add(cyclesOption);
         rootCommand.Options.Add(cycleIntervalOption);
+        rootCommand.Options.Add(durationOption);
         rootCommand.Options.Add(reportOption);
 
         rootCommand.SetAction(async (parseResult, token) =>
@@ -214,6 +219,7 @@ public sealed class StressorAppRunner
                 batchOption,
                 timeoutOption,
                 cycleIntervalOption,
+                durationOption,
                 reportOption);
 
             var configuration = StressTestConfigurationMerger.Merge(document, configPath, cliOverrides);
@@ -305,6 +311,7 @@ public sealed class StressorAppRunner
         Option<int> batchOption,
         Option<string> timeoutOption,
         Option<string> cycleIntervalOption,
+        Option<string?> durationOption,
         Option<string?> reportOption)
     {
         var specified = new HashSet<string>();
@@ -384,6 +391,11 @@ public sealed class StressorAppRunner
             specified.Add(StressTestConfigurationOptionNames.CycleInterval);
         }
 
+        if (IsOptionSpecified(parseResult, durationOption))
+        {
+            specified.Add(StressTestConfigurationOptionNames.Duration);
+        }
+
         if (IsOptionSpecified(parseResult, reportOption))
         {
             specified.Add(StressTestConfigurationOptionNames.Report);
@@ -407,6 +419,7 @@ public sealed class StressorAppRunner
             Batch = parseResult.GetValue(batchOption),
             Timeout = parseResult.GetValue(timeoutOption),
             CycleInterval = parseResult.GetValue(cycleIntervalOption),
+            Duration = parseResult.GetValue(durationOption),
             Report = parseResult.GetValue(reportOption)
         };
     }
