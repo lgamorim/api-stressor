@@ -39,7 +39,9 @@ public static class StressTestConfigurationMerger
                 Report = ResolveConfigRelativePath(document.Report, configFilePath, fromConfig: true),
                 Duration = document.Duration,
                 CyclesSpecified = document.Cycles is not null,
-                DurationSpecified = document.Duration is not null
+                DurationSpecified = document.Duration is not null,
+                Progress = document.Progress ?? values.Progress,
+                ProgressSpecified = document.Progress is not null
             };
         }
 
@@ -119,6 +121,15 @@ public static class StressTestConfigurationMerger
         if (cli.IsSpecified(StressTestConfigurationOptionNames.Report) && cli.Report is not null)
         {
             values = values with { Report = ResolveConfigRelativePath(cli.Report, configFilePath, fromConfig: false) };
+        }
+
+        if (cli.IsSpecified(StressTestConfigurationOptionNames.Progress))
+        {
+            values = values with
+            {
+                Progress = cli.Progress,
+                ProgressSpecified = true
+            };
         }
 
         return values;

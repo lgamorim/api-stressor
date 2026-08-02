@@ -1490,11 +1490,73 @@ public class StressTestRunnerTests
         Assert.Equal(6, report.TotalRequests);
     }
 
-    private static StressTestOptions CreateOptions(int requests = 1, int cycles = 1, int intervalMs = 1000, VerboseMode verbose = VerboseMode.Off, LoadMode load = LoadMode.GentlePacing, int batch = 1, int cycleIntervalMs = 0, TimeSpan? duration = null) =>
+    [Fact]
+    public async Task Should_WriteProgressNotCycleSummary_When_ProgressEnabled()
+    {
+        ConfigureSuccessfulRequest();
+        var runner = CreateRunner();
+
+        await runner.RunAsync(CreateOptions(requests: 2, cycles: 2, progress: true), TestCancellation.Token);
+
+        _reporter.DidNotReceive().WriteCycleSummary(
+            Arg.Any<int>(),
+            Arg.Any<int?>(),
+            Arg.Any<IReadOnlyList<RequestOutcome>>());
+        _reporter.Received(2).WriteProgress(Arg.Any<SessionProgressSnapshot>());
+    }
+
+    [Fact]
+    public async Task Should_NotWriteProgress_When_VerboseFailures()
+    {
+        ConfigureSuccessfulRequest();
+        var runner = CreateRunner();
+
+        await runner.RunAsync(CreateOptions(requests: 2, cycles: 2, progress: true, verbose: VerboseMode.Failures), TestCancellation.Token);
+
+        _reporter.DidNotReceive().WriteProgress(Arg.Any<SessionProgressSnapshot>());
+        _reporter.Received(2).WriteCycleSummary(
+            Arg.Any<int>(),
+            2,
+            Arg.Any<IReadOnlyList<RequestOutcome>>());
+    }
+
+    [Fact]
+    public async Task Should_WriteProgressWithElapsed_When_DurationMode()
+    {
+        ConfigureSuccessfulRequest();
+        var advancingTime = new AdvancingTimeProvider();
+        var runner = new StressTestRunner(_payloadReader, _httpClient, _reporter, advancingTime);
+        var options = CreateOptions(requests: 1, cycles: 1, cycleIntervalMs: 1000, duration: TimeSpan.FromSeconds(5), progress: true);
+
+        await runner.RunAsync(options, TestCancellation.Token);
+
+        _reporter.Received().WriteProgress(Arg.Is<SessionProgressSnapshot>(snapshot =>
+            snapshot.TotalDuration == TimeSpan.FromSeconds(5)
+            && snapshot.Elapsed != null
+            && snapshot.TotalRequests == null));
+    }
+
+    [Fact]
+    public async Task Should_WriteProgressInFixedRate_When_ProgressEnabled()
+    {
+        ConfigureSuccessfulRequest();
+        var runner = CreateRunner();
+
+        await runner.RunAsync(CreateOptions(requests: 2, cycles: 2, load: LoadMode.FixedRate, progress: true), TestCancellation.Token);
+
+        _reporter.DidNotReceive().WriteCycleSummary(
+            Arg.Any<int>(),
+            Arg.Any<int?>(),
+            Arg.Any<IReadOnlyList<RequestOutcome>>());
+        _reporter.Received(2).WriteProgress(Arg.Any<SessionProgressSnapshot>());
+    }
+
+    private static StressTestOptions CreateOptions(int requests = 1, int cycles = 1, int intervalMs = 1000, VerboseMode verbose = VerboseMode.Off, LoadMode load = LoadMode.GentlePacing, int batch = 1, int cycleIntervalMs = 0, TimeSpan? duration = null, bool progress = false) =>
         new(new Uri("https://example.com"), "payload.json", HttpMethod.Post, requests, TimeSpan.FromMilliseconds(intervalMs), cycles, Verbose: verbose, Load: load, Batch: batch)
         {
             CycleInterval = TimeSpan.FromMilliseconds(cycleIntervalMs),
-            Duration = duration
+            Duration = duration,
+            Progress = progress
         };
 
     private static void AssertApproximateDelay(TimeSpan expected, TimeSpan actual)

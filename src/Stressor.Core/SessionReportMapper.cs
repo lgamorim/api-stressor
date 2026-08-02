@@ -31,6 +31,7 @@ public static class SessionReportMapper
                 TimeoutMs = ToMilliseconds(options.RequestTimeout),
                 CycleIntervalMs = ToMilliseconds(options.CycleInterval),
                 Verbose = FormatVerboseMode(options.Verbose),
+                Progress = options.Progress,
                 AuthConfigured = !string.IsNullOrWhiteSpace(options.Auth),
                 HeadersCount = options.Headers.Count,
                 ExpectedStatusCodes = options.ExpectedStatusCodes.OrderBy(code => code).ToList()

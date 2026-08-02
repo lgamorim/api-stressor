@@ -122,7 +122,7 @@ public sealed class StressTestRunner : IStressTestRunner
                 }
             }
 
-            _reporter.WriteCycleSummary(cycle, totalCycles, cycleOutcomes);
+            WriteCycleOrProgress(options, sessionStart, cycle, outcomes, cycleOutcomes, totalCycles, sessionTotalRequests);
 
             if (!wasCancelled
                 && ShouldStartCycle(cycle + 1, sessionStart, options)
@@ -251,7 +251,7 @@ public sealed class StressTestRunner : IStressTestRunner
                 wasCancelled = true;
             }
 
-            _reporter.WriteCycleSummary(cycle, totalCycles, cycleOutcomes);
+            WriteCycleOrProgress(options, sessionStart, cycle, outcomes, cycleOutcomes, totalCycles, sessionTotalRequests);
         }
 
         if (cancellationToken.IsCancellationRequested)
@@ -345,7 +345,7 @@ public sealed class StressTestRunner : IStressTestRunner
                 }
             }
 
-            _reporter.WriteCycleSummary(cycle, totalCycles, cycleOutcomes);
+            WriteCycleOrProgress(options, sessionStart, cycle, outcomes, cycleOutcomes, totalCycles, sessionTotalRequests);
 
             if (!wasCancelled
                 && ShouldStartCycle(cycle + 1, sessionStart, options)
@@ -377,6 +377,62 @@ public sealed class StressTestRunner : IStressTestRunner
         var report = new SessionReport(options, outcomes, wasCancelled);
         _reporter.WriteSessionComplete(report);
         return report;
+    }
+
+    private void WriteCycleOrProgress(
+        StressTestOptions options,
+        DateTimeOffset sessionStart,
+        int cycle,
+        IReadOnlyList<RequestOutcome> outcomes,
+        IReadOnlyList<RequestOutcome> cycleOutcomes,
+        int? totalCycles,
+        int? sessionTotalRequests)
+    {
+        if (options.Progress && options.Verbose == VerboseMode.Off)
+        {
+            _reporter.WriteProgress(CreateProgressSnapshot(options, sessionStart, cycle, outcomes, totalCycles, sessionTotalRequests));
+            return;
+        }
+
+        _reporter.WriteCycleSummary(cycle, totalCycles, cycleOutcomes);
+    }
+
+    private SessionProgressSnapshot CreateProgressSnapshot(
+        StressTestOptions options,
+        DateTimeOffset sessionStart,
+        int cycleNumber,
+        IReadOnlyList<RequestOutcome> outcomes,
+        int? totalCycles,
+        int? totalRequests)
+    {
+        var succeeded = outcomes.Count(o => o.IsSuccess);
+        var failed = outcomes.Count(o => !o.IsSuccess && !o.IsCancelled);
+        var cancelled = outcomes.Count(o => o.IsCancelled);
+
+        if (options.IsDurationLimited)
+        {
+            return new SessionProgressSnapshot(
+                outcomes.Count,
+                null,
+                succeeded,
+                failed,
+                cancelled,
+                cycleNumber,
+                null,
+                _timeProvider.GetUtcNow() - sessionStart,
+                options.Duration);
+        }
+
+        return new SessionProgressSnapshot(
+            outcomes.Count,
+            totalRequests,
+            succeeded,
+            failed,
+            cancelled,
+            cycleNumber,
+            totalCycles,
+            null,
+            null);
     }
 
     private bool ShouldStartCycle(int cycle, DateTimeOffset sessionStart, StressTestOptions options) =>

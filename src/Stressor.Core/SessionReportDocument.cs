@@ -64,6 +64,9 @@ public sealed record SessionReportConfigurationDocument
     /// <summary>Verbose mode name.</summary>
     public required string Verbose { get; init; }
 
+    /// <summary>Whether session-wide progress lines were enabled.</summary>
+    public required bool Progress { get; init; }
+
     /// <summary>Whether authorization was configured.</summary>
     public required bool AuthConfigured { get; init; }
 

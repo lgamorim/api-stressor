@@ -53,6 +53,7 @@ dotnet run --project src/Stressor.App -- `
   [--cycles <count>] `
   [--duration <duration>] `
   [--cycle-interval <duration>] `
+  [--progress] `
   [--verbose <failures|full>]
 ```
 
@@ -101,6 +102,7 @@ When running the built executable:
 | `--cycles` | `-c` | No | Number of cycles to run (default: `1`; mutually exclusive with `--duration`) |
 | `--duration` | | No | Wall-clock session duration (alternative to `--cycles`; same formats as `--interval`) |
 | `--cycle-interval` | | No | Minimum wait after a cycle completes before the next cycle starts (default: `0s`; same formats as `--interval`) |
+| `--progress` | | No | Print session-wide progress lines instead of per-cycle summaries (ignored when `--verbose` is active) |
 | `--verbose` | `-v` | No | Per-request output mode: `failures` (detail only on errors) or `full` (detail on every request) |
 | `--help` | `-h` | No | Show usage information and exit |
 | `--version` | | No | Print application version and exit |
@@ -132,7 +134,8 @@ Example `scenario.json`:
   "load": "gentle-pacing",
   "batch": 1,
   "timeout": "100s",
-  "cycleInterval": "0s"
+  "cycleInterval": "0s",
+  "progress": true
 }
 ```
 
@@ -422,6 +425,23 @@ Session complete
 - **Fail** — requests that returned an error status or could not complete
 - **Avg** — average response time for successful requests in that cycle
 - **Auth: configured** — shown when `--auth` was provided (the token itself is not printed)
+
+### Progress output
+
+Use `--progress` on long cycle-limited or duration-limited runs to print session-wide status after each cycle instead of per-cycle summaries:
+
+```
+[10/600]  OK 10  Fail 0
+[20/600]  OK 20  Fail 0
+```
+
+For duration-limited soaks:
+
+```
+[1m00s/5m00s]  cycle 6  OK 60  Fail 0
+```
+
+`--progress` is ignored when `--verbose` is active (verbose per-request output would interleave with progress lines).
 
 ### Verbose output
 

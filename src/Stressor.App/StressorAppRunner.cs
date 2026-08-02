@@ -163,6 +163,10 @@ public sealed class StressorAppRunner
         {
             Description = "Path to write a JSON session report after completion"
         };
+        var progressOption = new Option<bool>("--progress")
+        {
+            Description = "Print session-wide progress lines instead of per-cycle summaries"
+        };
 
         rootCommand.Options.Add(configOption);
         rootCommand.Options.Add(urlOption);
@@ -182,6 +186,7 @@ public sealed class StressorAppRunner
         rootCommand.Options.Add(cycleIntervalOption);
         rootCommand.Options.Add(durationOption);
         rootCommand.Options.Add(reportOption);
+        rootCommand.Options.Add(progressOption);
 
         rootCommand.SetAction(async (parseResult, token) =>
         {
@@ -220,7 +225,8 @@ public sealed class StressorAppRunner
                 timeoutOption,
                 cycleIntervalOption,
                 durationOption,
-                reportOption);
+                reportOption,
+                progressOption);
 
             var configuration = StressTestConfigurationMerger.Merge(document, configPath, cliOverrides);
 
@@ -312,7 +318,8 @@ public sealed class StressorAppRunner
         Option<string> timeoutOption,
         Option<string> cycleIntervalOption,
         Option<string?> durationOption,
-        Option<string?> reportOption)
+        Option<string?> reportOption,
+        Option<bool> progressOption)
     {
         var specified = new HashSet<string>();
 
@@ -401,6 +408,11 @@ public sealed class StressorAppRunner
             specified.Add(StressTestConfigurationOptionNames.Report);
         }
 
+        if (IsOptionSpecified(parseResult, progressOption))
+        {
+            specified.Add(StressTestConfigurationOptionNames.Progress);
+        }
+
         return new StressTestCliOverrides
         {
             SpecifiedOptions = specified,
@@ -420,7 +432,8 @@ public sealed class StressorAppRunner
             Timeout = parseResult.GetValue(timeoutOption),
             CycleInterval = parseResult.GetValue(cycleIntervalOption),
             Duration = parseResult.GetValue(durationOption),
-            Report = parseResult.GetValue(reportOption)
+            Report = parseResult.GetValue(reportOption),
+            Progress = parseResult.GetValue(progressOption)
         };
     }
 

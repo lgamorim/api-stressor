@@ -74,6 +74,11 @@ public sealed class ConsoleSessionReporter : IConsoleSessionReporter
             _output.WriteLine($"  Cycles:   {options.Cycles.ToString(CultureInfo.InvariantCulture)} ({totalRequests.ToString(CultureInfo.InvariantCulture)} total requests)");
         }
 
+        if (options.Progress)
+        {
+            _output.WriteLine("  Progress: on");
+        }
+
         _output.WriteLine();
     }
 
@@ -94,6 +99,10 @@ public sealed class ConsoleSessionReporter : IConsoleSessionReporter
         _output.WriteLine(
             $"{cycleLabel}  OK {succeeded.ToString(CultureInfo.InvariantCulture)}  Fail {failed.ToString(CultureInfo.InvariantCulture)}  Avg {averageMs.ToString("F0", CultureInfo.InvariantCulture)}ms");
     }
+
+    /// <inheritdoc />
+    public void WriteProgress(SessionProgressSnapshot snapshot) =>
+        _output.WriteLine(SessionProgressFormatter.Format(snapshot));
 
     /// <inheritdoc />
     public void WriteVerboseRequest(

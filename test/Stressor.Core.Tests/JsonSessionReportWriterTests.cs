@@ -19,12 +19,12 @@ public class JsonSessionReportWriterTests
             [new RequestOutcome(1, 1, true, false, 200, TimeSpan.FromMilliseconds(45), null)],
             false);
 
-        await writer.WriteAsync(report, reportPath, 0, "0.12.0-alpha", TestCancellation.Token);
+        await writer.WriteAsync(report, reportPath, 0, "0.13.0-alpha", TestCancellation.Token);
 
         var json = await File.ReadAllTextAsync(reportPath, TestCancellation.Token);
         using var document = JsonDocument.Parse(json);
         Assert.Equal(1, document.RootElement.GetProperty("schemaVersion").GetInt32());
-        Assert.Equal("0.12.0-alpha", document.RootElement.GetProperty("stressorVersion").GetString());
+        Assert.Equal("0.13.0-alpha", document.RootElement.GetProperty("stressorVersion").GetString());
         Assert.Equal(0, document.RootElement.GetProperty("exitCode").GetInt32());
         Assert.False(document.RootElement.GetProperty("wasCancelled").GetBoolean());
         Assert.DoesNotContain("secret", json, StringComparison.Ordinal);
@@ -38,7 +38,7 @@ public class JsonSessionReportWriterTests
         var writer = new JsonSessionReportWriter(TimeProvider.System);
         var report = new SessionReport(CreateOptions(), [], false);
 
-        await writer.WriteAsync(report, reportPath, 0, "0.12.0-alpha", TestCancellation.Token);
+        await writer.WriteAsync(report, reportPath, 0, "0.13.0-alpha", TestCancellation.Token);
 
         Assert.True(File.Exists(reportPath));
     }
@@ -57,7 +57,7 @@ public class JsonSessionReportWriterTests
             [new RequestOutcome(1, 1, false, false, 500, TimeSpan.Zero, "error")],
             false);
 
-        await writer.WriteAsync(report, reportPath, 1, "0.12.0-alpha", TestCancellation.Token);
+        await writer.WriteAsync(report, reportPath, 1, "0.13.0-alpha", TestCancellation.Token);
 
         var json = await File.ReadAllTextAsync(reportPath, TestCancellation.Token);
         Assert.Contains("\"exitCode\": 1", json, StringComparison.Ordinal);
@@ -71,7 +71,7 @@ public class JsonSessionReportWriterTests
         var report = new SessionReport(CreateOptions(), [], false);
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            writer.WriteAsync(report, "  ", 0, "0.12.0-alpha", TestCancellation.Token));
+            writer.WriteAsync(report, "  ", 0, "0.13.0-alpha", TestCancellation.Token));
     }
 
     private static StressTestOptions CreateOptions() =>

@@ -53,4 +53,7 @@ public static class StressTestConfigurationOptionNames
 
     /// <summary>Duration option name.</summary>
     public const string Duration = "duration";
+
+    /// <summary>Progress option name.</summary>
+    public const string Progress = "progress";
 }

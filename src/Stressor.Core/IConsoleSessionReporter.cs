@@ -9,6 +9,9 @@ public interface IConsoleSessionReporter
     /// <summary>Writes per-cycle success, failure, and latency summary.</summary>
     void WriteCycleSummary(int cycleNumber, int? totalCycles, IReadOnlyList<RequestOutcome> cycleOutcomes);
 
+    /// <summary>Writes session-wide progress at a cycle boundary.</summary>
+    void WriteProgress(SessionProgressSnapshot snapshot);
+
     /// <summary>Writes the final session summary and optional failure digest.</summary>
     void WriteSessionComplete(SessionReport report);
 

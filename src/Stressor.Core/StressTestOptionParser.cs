@@ -105,7 +105,8 @@ public static class StressTestOptionParser
             Headers = values.Headers,
             ExpectedStatusCodes = values.ExpectStatus,
             ReportFilePath = values.Report,
-            Duration = duration
+            Duration = duration,
+            Progress = values.Progress
         };
 
         var validationErrors = StressTestOptionsValidator.Validate(options);

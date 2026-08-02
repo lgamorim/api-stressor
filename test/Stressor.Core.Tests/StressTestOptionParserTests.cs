@@ -133,6 +133,18 @@ public class StressTestOptionParserTests
     }
 
     [Fact]
+    public void Should_CreateOptionsWithProgress_When_ValidConfiguration()
+    {
+        var values = CreateValidValues() with { Progress = true, ProgressSpecified = true };
+
+        var (options, errors) = StressTestOptionParser.TryCreateOptions(values);
+
+        Assert.NotNull(options);
+        Assert.Empty(errors);
+        Assert.True(options.Progress);
+    }
+
+    [Fact]
     public void Should_ReturnError_When_DurationAndCyclesBothSpecified()
     {
         var values = CreateValidValues() with

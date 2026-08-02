@@ -57,6 +57,9 @@ public sealed record StressTestCliOverrides
     /// <summary>Session duration from the CLI.</summary>
     public string? Duration { get; init; }
 
+    /// <summary>Whether progress output is enabled from the CLI.</summary>
+    public bool Progress { get; init; }
+
     /// <summary>Returns whether the named option was explicitly specified on the command line.</summary>
     public bool IsSpecified(string optionName) => SpecifiedOptions.Contains(optionName);
 }

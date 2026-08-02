@@ -158,4 +158,32 @@ public class StressTestConfigurationMergerTests
         Assert.Equal("10m", merged.Duration);
         Assert.True(merged.DurationSpecified);
     }
+
+    [Fact]
+    public void Should_MergeConfigProgress_When_DocumentProvidesProgress()
+    {
+        var document = new StressTestScenarioDocument { Progress = true };
+
+        var merged = StressTestConfigurationMerger.Merge(document, null, new StressTestCliOverrides());
+
+        Assert.True(merged.Progress);
+        Assert.True(merged.ProgressSpecified);
+    }
+
+    [Fact]
+    public void Should_OverrideConfigProgress_When_CliExplicit()
+    {
+        var document = new StressTestScenarioDocument { Progress = false };
+
+        var cli = new StressTestCliOverrides
+        {
+            SpecifiedOptions = new HashSet<string> { StressTestConfigurationOptionNames.Progress },
+            Progress = true
+        };
+
+        var merged = StressTestConfigurationMerger.Merge(document, null, cli);
+
+        Assert.True(merged.Progress);
+        Assert.True(merged.ProgressSpecified);
+    }
 }

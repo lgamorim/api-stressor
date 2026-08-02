@@ -100,6 +100,8 @@ public static class StressorAppHelp
         output.WriteLine("  Total requests in a cycle-limited session = requests x cycles.");
         output.WriteLine("  Use --verbose failures to print detail only for failed or cancelled requests.");
         output.WriteLine("  Use --verbose full to print detail for every request (short smoke/debug runs).");
+        output.WriteLine("  Use --progress for session-wide status lines during long runs (replaces per-cycle summaries).");
+        output.WriteLine("  --progress is ignored when --verbose is active.");
         output.WriteLine("  Verbose output includes session index, payload variant, bodies, and HTTP status.");
         output.WriteLine();
         output.WriteLine("Supported HTTP methods:");

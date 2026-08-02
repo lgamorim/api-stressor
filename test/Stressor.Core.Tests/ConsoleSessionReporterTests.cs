@@ -591,6 +591,30 @@ public class ConsoleSessionReporterTests
         Assert.Contains("Load:     batch", writer.ToString(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Should_PrintProgressIndicator_When_ProgressEnabled()
+    {
+        var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var reporter = new ConsoleSessionReporter(writer);
+        var options = CreateOptions() with { Progress = true };
+
+        reporter.WriteSessionStart(options);
+
+        Assert.Contains("Progress: on", writer.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_WriteFormattedProgressLine_When_WriteProgressCalled()
+    {
+        var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var reporter = new ConsoleSessionReporter(writer);
+        var snapshot = new SessionProgressSnapshot(20, 60, 20, 0, 0, 2, 3, null, null);
+
+        reporter.WriteProgress(snapshot);
+
+        Assert.Equal("[20/60]  OK 20  Fail 0" + Environment.NewLine, writer.ToString());
+    }
+
     private static StressTestOptions CreateOptions() =>
         new(new Uri("https://example.com"), "payload.json", HttpMethod.Post, 1, TimeSpan.FromSeconds(1), 1);
 }

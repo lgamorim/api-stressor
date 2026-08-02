@@ -57,4 +57,10 @@ public sealed record StressTestConfigurationValues
 
     /// <summary>Whether duration was explicitly set in config or CLI.</summary>
     public bool DurationSpecified { get; init; }
+
+    /// <summary>Whether to print session-wide progress lines.</summary>
+    public bool Progress { get; init; }
+
+    /// <summary>Whether progress was explicitly set in config or CLI.</summary>
+    public bool ProgressSpecified { get; init; }
 }

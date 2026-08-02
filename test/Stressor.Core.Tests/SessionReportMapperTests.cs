@@ -15,7 +15,7 @@ public class SessionReportMapperTests
         };
         var report = new SessionReport(options, outcomes, false);
 
-        var document = SessionReportMapper.ToDocument(report, 1, "0.12.0-alpha", CompletedAt);
+        var document = SessionReportMapper.ToDocument(report, 1, "0.13.0-alpha", CompletedAt);
 
         Assert.Equal(2, document.Summary.TotalRequests);
         Assert.Equal(1, document.Summary.Succeeded);
@@ -35,7 +35,7 @@ public class SessionReportMapperTests
         };
         var report = new SessionReport(options, outcomes, false);
 
-        var document = SessionReportMapper.ToDocument(report, 0, "0.12.0-alpha", CompletedAt);
+        var document = SessionReportMapper.ToDocument(report, 0, "0.13.0-alpha", CompletedAt);
 
         Assert.NotNull(document.Summary.LatencyMs);
         Assert.Equal(30, document.Summary.LatencyMs.Min);
@@ -53,7 +53,7 @@ public class SessionReportMapperTests
         };
         var report = new SessionReport(options, outcomes, false);
 
-        var document = SessionReportMapper.ToDocument(report, 1, "0.12.0-alpha", CompletedAt);
+        var document = SessionReportMapper.ToDocument(report, 1, "0.13.0-alpha", CompletedAt);
 
         Assert.Null(document.Summary.LatencyMs);
     }
@@ -69,7 +69,7 @@ public class SessionReportMapperTests
         };
         var report = new SessionReport(options, [], false);
 
-        var document = SessionReportMapper.ToDocument(report, 0, "0.12.0-alpha", CompletedAt);
+        var document = SessionReportMapper.ToDocument(report, 0, "0.13.0-alpha", CompletedAt);
 
         Assert.True(document.Configuration.AuthConfigured);
         Assert.Equal(1, document.Configuration.HeadersCount);
@@ -88,7 +88,7 @@ public class SessionReportMapperTests
         };
         var report = new SessionReport(options, outcomes, false);
 
-        var document = SessionReportMapper.ToDocument(report, 0, "0.12.0-alpha", CompletedAt);
+        var document = SessionReportMapper.ToDocument(report, 0, "0.13.0-alpha", CompletedAt);
 
         Assert.Equal(1, document.Outcomes[0].SessionIndex);
         Assert.Equal(2, document.Outcomes[1].SessionIndex);
@@ -100,10 +100,21 @@ public class SessionReportMapperTests
         var options = CreateOptions() with { Duration = TimeSpan.FromMinutes(5) };
         var report = new SessionReport(options, [], false);
 
-        var document = SessionReportMapper.ToDocument(report, 0, "0.12.0-alpha", CompletedAt);
+        var document = SessionReportMapper.ToDocument(report, 0, "0.13.0-alpha", CompletedAt);
 
         Assert.Null(document.Configuration.Cycles);
         Assert.Equal(300_000, document.Configuration.DurationMs);
+    }
+
+    [Fact]
+    public void Should_MapProgress_When_ProgressEnabled()
+    {
+        var options = CreateOptions() with { Progress = true };
+        var report = new SessionReport(options, [], false);
+
+        var document = SessionReportMapper.ToDocument(report, 0, "0.13.0-alpha", CompletedAt);
+
+        Assert.True(document.Configuration.Progress);
     }
 
     private static StressTestOptions CreateOptions() =>

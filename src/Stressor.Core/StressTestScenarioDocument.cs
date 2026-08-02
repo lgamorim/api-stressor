@@ -50,4 +50,7 @@ public sealed record StressTestScenarioDocument
 
     /// <summary>Wall-clock session duration (alternative to cycles).</summary>
     public string? Duration { get; init; }
+
+    /// <summary>Whether to print session-wide progress lines.</summary>
+    public bool? Progress { get; init; }
 }

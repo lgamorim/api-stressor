@@ -37,4 +37,7 @@ public sealed record StressTestOptions(
 
     /// <summary>Whether the session is limited by wall-clock duration instead of a cycle count.</summary>
     public bool IsDurationLimited => Duration is not null;
+
+    /// <summary>Whether to print session-wide progress lines instead of per-cycle summaries.</summary>
+    public bool Progress { get; init; }
 }
