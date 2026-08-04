@@ -237,7 +237,7 @@ public class StressorAppRunnerTests
             var exitCode = await new StressorAppRunner(CreateProvider()).RunAsync(["--version"], TestCancellation.Token);
 
             Assert.Equal(0, exitCode);
-            Assert.Contains("0.13.0-alpha", writer.ToString(), StringComparison.Ordinal);
+            Assert.Contains("0.14.0-alpha", writer.ToString(), StringComparison.Ordinal);
         }
         finally
         {
@@ -804,6 +804,36 @@ public class StressorAppRunnerTests
         await stressTestRunner.Received(1).RunAsync(
             Arg.Is<StressTestOptions>(o => o.Progress),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_BindDryRun_When_DryRunExplicit()
+    {
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        await ExecuteWithRunner(stressTestRunner, CreateArgs(dryRun: true));
+
+        await stressTestRunner.Received(1).RunAsync(
+            Arg.Is<StressTestOptions>(o => o.DryRun),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_NotWriteReportFile_When_DryRunEnabled()
+    {
+        var reportPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json");
+        var stressTestRunner = Substitute.For<IStressTestRunner>();
+        stressTestRunner.RunAsync(Arg.Any<StressTestOptions>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SessionReport(callInfo.ArgAt<StressTestOptions>(0), [], false));
+
+        var exitCode = await ExecuteWithRunner(
+            stressTestRunner,
+            [.. CreateArgs(dryRun: true), "--report", reportPath]);
+
+        Assert.Equal(0, exitCode);
+        Assert.False(File.Exists(reportPath));
     }
 
     [Fact]
@@ -1515,7 +1545,7 @@ public class StressorAppRunnerTests
         return path;
     }
 
-    private static string[] CreateArgs(string? method = "POST", string? auth = null, string? verbose = null, string? load = null, string? cycles = null, string? batch = null, string? requests = null, string? duration = null, bool progress = false)
+    private static string[] CreateArgs(string? method = "POST", string? auth = null, string? verbose = null, string? load = null, string? cycles = null, string? batch = null, string? requests = null, string? duration = null, bool progress = false, bool dryRun = false)
     {
         var args = new List<string>
         {
@@ -1570,6 +1600,11 @@ public class StressorAppRunnerTests
         if (progress)
         {
             args.Add("--progress");
+        }
+
+        if (dryRun)
+        {
+            args.Add("--dry-run");
         }
 
         return [.. args];

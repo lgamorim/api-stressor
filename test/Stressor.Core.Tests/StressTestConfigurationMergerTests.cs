@@ -186,4 +186,32 @@ public class StressTestConfigurationMergerTests
         Assert.True(merged.Progress);
         Assert.True(merged.ProgressSpecified);
     }
+
+    [Fact]
+    public void Should_MergeConfigDryRun_When_DocumentProvidesDryRun()
+    {
+        var document = new StressTestScenarioDocument { DryRun = true };
+
+        var merged = StressTestConfigurationMerger.Merge(document, null, new StressTestCliOverrides());
+
+        Assert.True(merged.DryRun);
+        Assert.True(merged.DryRunSpecified);
+    }
+
+    [Fact]
+    public void Should_OverrideConfigDryRun_When_CliExplicit()
+    {
+        var document = new StressTestScenarioDocument { DryRun = false };
+
+        var cli = new StressTestCliOverrides
+        {
+            SpecifiedOptions = new HashSet<string> { StressTestConfigurationOptionNames.DryRun },
+            DryRun = true
+        };
+
+        var merged = StressTestConfigurationMerger.Merge(document, null, cli);
+
+        Assert.True(merged.DryRun);
+        Assert.True(merged.DryRunSpecified);
+    }
 }

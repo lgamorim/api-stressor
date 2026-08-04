@@ -1551,12 +1551,72 @@ public class StressTestRunnerTests
         _reporter.Received(2).WriteProgress(Arg.Any<SessionProgressSnapshot>());
     }
 
-    private static StressTestOptions CreateOptions(int requests = 1, int cycles = 1, int intervalMs = 1000, VerboseMode verbose = VerboseMode.Off, LoadMode load = LoadMode.GentlePacing, int batch = 1, int cycleIntervalMs = 0, TimeSpan? duration = null, bool progress = false) =>
+    [Fact]
+    public async Task Should_WriteDryRunPlanAndSkipHttp_When_DryRunEnabled()
+    {
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(["{\"ok\":true}"]);
+        var runner = CreateRunner();
+
+        await runner.RunAsync(CreateOptions(dryRun: true), TestCancellation.Token);
+
+        _reporter.Received(1).WriteDryRunPlan(
+            Arg.Is<StressTestOptions>(o => o.DryRun),
+            1);
+        await _httpClient.DidNotReceive().SendAsync(
+            Arg.Any<StressTestOptions>(),
+            Arg.Any<string>(),
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_NotWriteSessionStartOrComplete_When_DryRunEnabled()
+    {
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(["{\"ok\":true}"]);
+        var runner = CreateRunner();
+
+        await runner.RunAsync(CreateOptions(dryRun: true), TestCancellation.Token);
+
+        _reporter.DidNotReceive().WriteSessionStart(Arg.Any<StressTestOptions>());
+        _reporter.DidNotReceive().WriteSessionComplete(Arg.Any<SessionReport>());
+    }
+
+    [Fact]
+    public async Task Should_ThrowArgumentException_When_DryRunAndInvalidOptions()
+    {
+        var runner = CreateRunner();
+
+        var exception = await Assert.ThrowsAsync<ArgumentException>(
+            () => runner.RunAsync(CreateOptions(cycles: 0, dryRun: true), TestCancellation.Token));
+
+        Assert.Contains("Cycles", exception.Message, StringComparison.OrdinalIgnoreCase);
+        await _payloadReader.DidNotReceive().ReadAsync(
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_PropagatePayloadError_When_DryRunAndMissingPayload()
+    {
+        _payloadReader.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns<Task<IReadOnlyList<string>>>(_ => throw new FileNotFoundException("Payload file not found: missing.json", "missing.json"));
+
+        var runner = CreateRunner();
+
+        await Assert.ThrowsAsync<FileNotFoundException>(
+            () => runner.RunAsync(CreateOptions(dryRun: true), TestCancellation.Token));
+    }
+
+    private static StressTestOptions CreateOptions(int requests = 1, int cycles = 1, int intervalMs = 1000, VerboseMode verbose = VerboseMode.Off, LoadMode load = LoadMode.GentlePacing, int batch = 1, int cycleIntervalMs = 0, TimeSpan? duration = null, bool progress = false, bool dryRun = false) =>
         new(new Uri("https://example.com"), "payload.json", HttpMethod.Post, requests, TimeSpan.FromMilliseconds(intervalMs), cycles, Verbose: verbose, Load: load, Batch: batch)
         {
             CycleInterval = TimeSpan.FromMilliseconds(cycleIntervalMs),
             Duration = duration,
-            Progress = progress
+            Progress = progress,
+            DryRun = dryRun
         };
 
     private static void AssertApproximateDelay(TimeSpan expected, TimeSpan actual)

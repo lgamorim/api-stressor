@@ -145,6 +145,18 @@ public class StressTestOptionParserTests
     }
 
     [Fact]
+    public void Should_CreateOptionsWithDryRun_When_ValidConfiguration()
+    {
+        var values = CreateValidValues() with { DryRun = true, DryRunSpecified = true };
+
+        var (options, errors) = StressTestOptionParser.TryCreateOptions(values);
+
+        Assert.NotNull(options);
+        Assert.Empty(errors);
+        Assert.True(options.DryRun);
+    }
+
+    [Fact]
     public void Should_ReturnError_When_DurationAndCyclesBothSpecified()
     {
         var values = CreateValidValues() with

@@ -63,4 +63,10 @@ public sealed record StressTestConfigurationValues
 
     /// <summary>Whether progress was explicitly set in config or CLI.</summary>
     public bool ProgressSpecified { get; init; }
+
+    /// <summary>Whether to validate configuration and print the plan without sending requests.</summary>
+    public bool DryRun { get; init; }
+
+    /// <summary>Whether dry-run was explicitly set in config or CLI.</summary>
+    public bool DryRunSpecified { get; init; }
 }

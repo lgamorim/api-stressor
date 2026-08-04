@@ -167,6 +167,10 @@ public sealed class StressorAppRunner
         {
             Description = "Print session-wide progress lines instead of per-cycle summaries"
         };
+        var dryRunOption = new Option<bool>("--dry-run")
+        {
+            Description = "Validate configuration and payload without sending requests"
+        };
 
         rootCommand.Options.Add(configOption);
         rootCommand.Options.Add(urlOption);
@@ -187,6 +191,7 @@ public sealed class StressorAppRunner
         rootCommand.Options.Add(durationOption);
         rootCommand.Options.Add(reportOption);
         rootCommand.Options.Add(progressOption);
+        rootCommand.Options.Add(dryRunOption);
 
         rootCommand.SetAction(async (parseResult, token) =>
         {
@@ -226,7 +231,8 @@ public sealed class StressorAppRunner
                 cycleIntervalOption,
                 durationOption,
                 reportOption,
-                progressOption);
+                progressOption,
+                dryRunOption);
 
             var configuration = StressTestConfigurationMerger.Merge(document, configPath, cliOverrides);
 
@@ -319,7 +325,8 @@ public sealed class StressorAppRunner
         Option<string> cycleIntervalOption,
         Option<string?> durationOption,
         Option<string?> reportOption,
-        Option<bool> progressOption)
+        Option<bool> progressOption,
+        Option<bool> dryRunOption)
     {
         var specified = new HashSet<string>();
 
@@ -413,6 +420,11 @@ public sealed class StressorAppRunner
             specified.Add(StressTestConfigurationOptionNames.Progress);
         }
 
+        if (IsOptionSpecified(parseResult, dryRunOption))
+        {
+            specified.Add(StressTestConfigurationOptionNames.DryRun);
+        }
+
         return new StressTestCliOverrides
         {
             SpecifiedOptions = specified,
@@ -433,7 +445,8 @@ public sealed class StressorAppRunner
             CycleInterval = parseResult.GetValue(cycleIntervalOption),
             Duration = parseResult.GetValue(durationOption),
             Report = parseResult.GetValue(reportOption),
-            Progress = parseResult.GetValue(progressOption)
+            Progress = parseResult.GetValue(progressOption),
+            DryRun = parseResult.GetValue(dryRunOption)
         };
     }
 
@@ -475,7 +488,7 @@ public sealed class StressorAppRunner
             var report = await runner.RunAsync(options, cancellationToken).ConfigureAwait(false);
             var exitCode = MapExitCode(report);
 
-            if (!string.IsNullOrWhiteSpace(options.ReportFilePath))
+            if (!options.DryRun && !string.IsNullOrWhiteSpace(options.ReportFilePath))
             {
                 try
                 {

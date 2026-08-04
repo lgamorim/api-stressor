@@ -40,4 +40,7 @@ public sealed record StressTestOptions(
 
     /// <summary>Whether to print session-wide progress lines instead of per-cycle summaries.</summary>
     public bool Progress { get; init; }
+
+    /// <summary>Whether to validate configuration and print the plan without sending requests.</summary>
+    public bool DryRun { get; init; }
 }

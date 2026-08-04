@@ -41,7 +41,9 @@ public static class StressTestConfigurationMerger
                 CyclesSpecified = document.Cycles is not null,
                 DurationSpecified = document.Duration is not null,
                 Progress = document.Progress ?? values.Progress,
-                ProgressSpecified = document.Progress is not null
+                ProgressSpecified = document.Progress is not null,
+                DryRun = document.DryRun ?? values.DryRun,
+                DryRunSpecified = document.DryRun is not null
             };
         }
 
@@ -129,6 +131,15 @@ public static class StressTestConfigurationMerger
             {
                 Progress = cli.Progress,
                 ProgressSpecified = true
+            };
+        }
+
+        if (cli.IsSpecified(StressTestConfigurationOptionNames.DryRun))
+        {
+            values = values with
+            {
+                DryRun = cli.DryRun,
+                DryRunSpecified = true
             };
         }
 

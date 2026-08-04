@@ -102,6 +102,8 @@ public static class StressorAppHelp
         output.WriteLine("  Use --verbose full to print detail for every request (short smoke/debug runs).");
         output.WriteLine("  Use --progress for session-wide status lines during long runs (replaces per-cycle summaries).");
         output.WriteLine("  --progress is ignored when --verbose is active.");
+        output.WriteLine("  Use --dry-run to validate URL, payload, and options without sending HTTP requests.");
+        output.WriteLine("  --dry-run prints the resolved plan and skips the session; JSON report output is not written.");
         output.WriteLine("  Verbose output includes session index, payload variant, bodies, and HTTP status.");
         output.WriteLine();
         output.WriteLine("Supported HTTP methods:");

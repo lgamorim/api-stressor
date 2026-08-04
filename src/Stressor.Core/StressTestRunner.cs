@@ -32,6 +32,12 @@ public sealed class StressTestRunner : IStressTestRunner
 
         var payloads = await _payloadReader.ReadAsync(options.PayloadFilePath, cancellationToken).ConfigureAwait(false);
 
+        if (options.DryRun)
+        {
+            _reporter.WriteDryRunPlan(options, payloads.Count);
+            return new SessionReport(options, [], false);
+        }
+
         return options.Load switch
         {
             LoadMode.GentlePacing => await RunGentlePacingAsync(options, payloads, cancellationToken).ConfigureAwait(false),

@@ -23,6 +23,29 @@ public sealed class ConsoleSessionReporter : IConsoleSessionReporter
     public void WriteSessionStart(StressTestOptions options)
     {
         _output.WriteLine("Stress test starting");
+        WriteConfigurationSummary(options);
+        _output.WriteLine();
+    }
+
+    /// <inheritdoc />
+    public void WriteDryRunPlan(StressTestOptions options, int payloadCount)
+    {
+        _output.WriteLine("Dry run — no requests will be sent");
+        _output.WriteLine();
+        WriteConfigurationSummary(options);
+        _output.WriteLine($"  Payload:  {options.PayloadFilePath} ({FormatPayloadCount(payloadCount)})");
+
+        if (!string.IsNullOrWhiteSpace(options.ReportFilePath))
+        {
+            _output.WriteLine($"  Report:   {options.ReportFilePath} (skipped — dry run)");
+        }
+
+        _output.WriteLine();
+        _output.WriteLine("Validation passed.");
+    }
+
+    private void WriteConfigurationSummary(StressTestOptions options)
+    {
         _output.WriteLine($"  URL:      {options.Url.ToString()}");
         _output.WriteLine($"  Method:   {options.Method.Method}");
 
@@ -78,8 +101,6 @@ public sealed class ConsoleSessionReporter : IConsoleSessionReporter
         {
             _output.WriteLine("  Progress: on");
         }
-
-        _output.WriteLine();
     }
 
     /// <inheritdoc />
@@ -268,6 +289,11 @@ public sealed class ConsoleSessionReporter : IConsoleSessionReporter
 
     private static string FormatInterval(TimeSpan interval)
     {
+        if (interval.TotalMinutes >= 1 && interval.TotalSeconds % 60 == 0)
+        {
+            return $"{interval.TotalMinutes:F0}m";
+        }
+
         if (interval.TotalSeconds >= 1 && interval.TotalMilliseconds % 1000 == 0)
         {
             return $"{interval.TotalSeconds:F0}s";
@@ -275,4 +301,7 @@ public sealed class ConsoleSessionReporter : IConsoleSessionReporter
 
         return $"{interval.TotalMilliseconds:F0}ms";
     }
+
+    private static string FormatPayloadCount(int payloadCount) =>
+        payloadCount == 1 ? "1 body" : $"{payloadCount.ToString(CultureInfo.InvariantCulture)} bodies";
 }

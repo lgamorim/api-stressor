@@ -6,6 +6,9 @@ public interface IConsoleSessionReporter
     /// <summary>Writes the session header and configuration summary.</summary>
     void WriteSessionStart(StressTestOptions options);
 
+    /// <summary>Writes the resolved session plan without sending requests.</summary>
+    void WriteDryRunPlan(StressTestOptions options, int payloadCount);
+
     /// <summary>Writes per-cycle success, failure, and latency summary.</summary>
     void WriteCycleSummary(int cycleNumber, int? totalCycles, IReadOnlyList<RequestOutcome> cycleOutcomes);
 

@@ -54,6 +54,7 @@ dotnet run --project src/Stressor.App -- `
   [--duration <duration>] `
   [--cycle-interval <duration>] `
   [--progress] `
+  [--dry-run] `
   [--verbose <failures|full>]
 ```
 
@@ -103,6 +104,7 @@ When running the built executable:
 | `--duration` | | No | Wall-clock session duration (alternative to `--cycles`; same formats as `--interval`) |
 | `--cycle-interval` | | No | Minimum wait after a cycle completes before the next cycle starts (default: `0s`; same formats as `--interval`) |
 | `--progress` | | No | Print session-wide progress lines instead of per-cycle summaries (ignored when `--verbose` is active) |
+| `--dry-run` | | No | Validate URL, payload, and options; print the resolved plan without sending requests |
 | `--verbose` | `-v` | No | Per-request output mode: `failures` (detail only on errors) or `full` (detail on every request) |
 | `--help` | `-h` | No | Show usage information and exit |
 | `--version` | | No | Print application version and exit |
@@ -135,7 +137,8 @@ Example `scenario.json`:
   "batch": 1,
   "timeout": "100s",
   "cycleInterval": "0s",
-  "progress": true
+  "progress": true,
+  "dryRun": false
 }
 ```
 
@@ -442,6 +445,26 @@ For duration-limited soaks:
 ```
 
 `--progress` is ignored when `--verbose` is active (verbose per-request output would interleave with progress lines).
+
+### Dry-run output
+
+Use `--dry-run` to validate a scenario before sending traffic. The tool parses merged options, reads and validates the payload file, prints the resolved session plan, and exits without HTTP requests or JSON report output:
+
+```
+Dry run — no requests will be sent
+
+  URL:      https://api.example.com/health
+  Method:   POST
+  Payload:  ./ok.json (1 body)
+  Rate:     10 requests/cycle, 1s between starts
+  Load:     gentle-pacing
+  ...
+  Cycles:   60 (600 total requests)
+
+Validation passed.
+```
+
+If `--report` is set, the dry-run output notes that report writing is skipped.
 
 ### Verbose output
 

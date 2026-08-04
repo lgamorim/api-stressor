@@ -56,4 +56,7 @@ public static class StressTestConfigurationOptionNames
 
     /// <summary>Progress option name.</summary>
     public const string Progress = "progress";
+
+    /// <summary>Dry-run option name.</summary>
+    public const string DryRun = "dryRun";
 }

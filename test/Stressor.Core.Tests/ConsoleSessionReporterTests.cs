@@ -615,6 +615,80 @@ public class ConsoleSessionReporterTests
         Assert.Equal("[20/60]  OK 20  Fail 0" + Environment.NewLine, writer.ToString());
     }
 
+    [Fact]
+    public void Should_PrintDryRunHeaderAndValidationPassed_When_WriteDryRunPlanCalled()
+    {
+        var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var reporter = new ConsoleSessionReporter(writer);
+        var options = CreateOptions();
+
+        reporter.WriteDryRunPlan(options, 1);
+
+        var output = writer.ToString();
+        Assert.Contains("Dry run — no requests will be sent", output, StringComparison.Ordinal);
+        Assert.Contains("Validation passed.", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_PrintPayloadPathAndSingleBody_When_WriteDryRunPlanWithOnePayload()
+    {
+        var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var reporter = new ConsoleSessionReporter(writer);
+        var options = CreateOptions() with { PayloadFilePath = "./ok.json" };
+
+        reporter.WriteDryRunPlan(options, 1);
+
+        Assert.Contains("Payload:  ./ok.json (1 body)", writer.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_PrintPayloadCountAsBodies_When_WriteDryRunPlanWithMultiplePayloads()
+    {
+        var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var reporter = new ConsoleSessionReporter(writer);
+        var options = CreateOptions() with { PayloadFilePath = "./envelope.json" };
+
+        reporter.WriteDryRunPlan(options, 3);
+
+        Assert.Contains("Payload:  ./envelope.json (3 bodies)", writer.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_PrintCycleLimitedSummary_When_WriteDryRunPlanWithCycles()
+    {
+        var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var reporter = new ConsoleSessionReporter(writer);
+        var options = CreateOptions() with { RequestsPerInterval = 10, Cycles = 60 };
+
+        reporter.WriteDryRunPlan(options, 1);
+
+        Assert.Contains("Cycles:   60 (600 total requests)", writer.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_PrintDurationLimitedSummary_When_WriteDryRunPlanWithDuration()
+    {
+        var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var reporter = new ConsoleSessionReporter(writer);
+        var options = CreateOptions() with { Duration = TimeSpan.FromMinutes(5) };
+
+        reporter.WriteDryRunPlan(options, 1);
+
+        Assert.Contains("Duration: 5m (runs until time elapsed)", writer.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_PrintSkippedReportNote_When_WriteDryRunPlanWithReportPath()
+    {
+        var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var reporter = new ConsoleSessionReporter(writer);
+        var options = CreateOptions() with { ReportFilePath = "./out.json" };
+
+        reporter.WriteDryRunPlan(options, 1);
+
+        Assert.Contains("Report:   ./out.json (skipped — dry run)", writer.ToString(), StringComparison.Ordinal);
+    }
+
     private static StressTestOptions CreateOptions() =>
         new(new Uri("https://example.com"), "payload.json", HttpMethod.Post, 1, TimeSpan.FromSeconds(1), 1);
 }
