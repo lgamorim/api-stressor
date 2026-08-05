@@ -13,7 +13,7 @@
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <AssemblyName>stressor</AssemblyName>
-        <Version>0.14.0-alpha</Version>
+        <Version>1.0.0-beta</Version>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
