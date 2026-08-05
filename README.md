@@ -1,5 +1,10 @@
 # api-stressor
 
+[![CI](https://github.com/lgamorim/api-stressor/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/lgamorim/api-stressor/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/lgamorim/api-stressor?include_prereleases)](https://github.com/lgamorim/api-stressor/releases)
+[![License](https://img.shields.io/github/license/lgamorim/api-stressor)](LICENSE)
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
+
 A command-line tool for stress testing HTTP API endpoints. It sends repeated requests at a configurable rate using a JSON payload file, then reports success, failure, and response-time statistics.
 
 ## Installation
