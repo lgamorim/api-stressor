@@ -9,7 +9,7 @@
     <Project Path="src/Stressor.Core/Stressor.Core.csproj" />
   </Folder>
   <Folder Name="/test/">
-    <Project Path="test/Stressor.App.Tests/Stressor.App.Tests.csproj" />
-    <Project Path="test/Stressor.Core.Tests/Stressor.Core.Tests.csproj" />
+    <Project Path="test/Stressor.App.UnitTests/Stressor.App.UnitTests.csproj" />
+    <Project Path="test/Stressor.Core.UnitTests/Stressor.Core.UnitTests.csproj" />
   </Folder>
 </Solution>

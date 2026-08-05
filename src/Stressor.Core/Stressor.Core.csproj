@@ -9,7 +9,7 @@
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.9" />
   </ItemGroup>
   <ItemGroup>
-    <InternalsVisibleTo Include="Stressor.Core.Tests" />
+    <InternalsVisibleTo Include="Stressor.Core.UnitTests" />
   </ItemGroup>
 
 </Project>

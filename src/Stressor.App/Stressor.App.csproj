@@ -23,7 +23,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <InternalsVisibleTo Include="Stressor.App.Tests" />
+      <InternalsVisibleTo Include="Stressor.App.UnitTests" />
     </ItemGroup>
 
 </Project>

@@ -238,6 +238,8 @@ requests × cycles
 
 Use `--duration` instead of `--cycles` to run repeated cycles until a wall-clock time budget elapses (for example `--duration 5m`). `--duration` and `--cycles` cannot be used together.
 
+In duration mode, the session stops starting new cycles once the wall-clock budget elapses. A cycle that has already started completes fully even if the duration expires mid-cycle — the tool does not cut off requests in the middle of a cycle.
+
 ### `gentle-pacing` (default)
 
 The first request in a session starts immediately. Each subsequent request waits until `--interval` has elapsed since the previous request **started**. If a request takes longer than the interval, the next request starts as soon as the slow one finishes. Only one request is in flight at a time.
@@ -255,6 +257,8 @@ Each request starts every `--interval` on a fixed session timeline (`0s`, `inter
 For example, `--load fixed-rate --requests 10 --interval 1s --cycles 1` starts one request per second for 10 seconds regardless of response time.
 
 With `--verbose failures` or `--verbose full`, per-request output includes a session-wide `(index/total)` prefix on the header line.
+
+When using `--load fixed-rate` with `--duration`, long soak tests with a very short `--interval` can accumulate a large number of in-flight HTTP tasks because requests are scheduled on a fixed timeline regardless of response time. Prefer `gentle-pacing` or `batch` for long duration-based soaks, or use a longer interval in fixed-rate mode.
 
 ### `batch`
 
